@@ -1,0 +1,14 @@
+# User specified exclusions (from image)
+maxwellResults/
+specs/kyn28-apdl-script-generator/
+
+# Maxwell/Ansys temporary files
+*.lock
+*.auto
+*.log
+*.err
+
+# Maxwell Results folders (Standard naming convention)
+*.mxwlresults/
+*.aEdt
+*.pEdt
