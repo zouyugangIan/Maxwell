@@ -1,6 +1,7 @@
 # User specified exclusions (from image)
 maxwellResults/
 specs/kyn28-apdl-script-generator/
+asset/*.SAT
 
 # Maxwell/Ansys temporary files
 *.lock
@@ -12,3 +13,9 @@ specs/kyn28-apdl-script-generator/
 *.mxwlresults/
 *.aEdt
 *.pEdt
+
+# Environment and Output
+.venv/
+Results/
+__pycache__/
+*.desktop
