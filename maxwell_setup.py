@@ -16,18 +16,109 @@ import os
 import sys
 import time
 import argparse
+import platform
+
+# ======================================================================
+# 跨平台 ANSYS 版本和路径自动检测 (必须在导入 pyaedt 之前执行)
+# ======================================================================
+def detect_ansys_installation():
+    """
+    自动检测 ANSYS Electronics Desktop 安装版本和路径 (Windows/Linux)
+    返回: (版本号, 安装路径) 例如 ("2022.1", "C:\\Program Files\\AnsysEM\\v221\\Win64")
+    """
+    _system = platform.system()
+    
+    if _system == "Windows":
+        try:
+            import winreg
+            base_key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, 
+                                       r"SOFTWARE\Ansoft\ElectronicsDesktop")
+            versions = []
+            i = 0
+            while True:
+                try:
+                    ver = winreg.EnumKey(base_key, i)
+                    versions.append(ver)
+                    i += 1
+                except OSError:
+                    break
+            winreg.CloseKey(base_key)
+            
+            if versions:
+                versions.sort(reverse=True)
+                detected_version = versions[0]
+                
+                try:
+                    key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE,
+                                         rf"SOFTWARE\Ansoft\ElectronicsDesktop\{detected_version}")
+                    install_path = winreg.QueryValueEx(key, "InstallPath")[0]
+                    winreg.CloseKey(key)
+                    if install_path and os.path.exists(install_path):
+                        return (detected_version, install_path)
+                except:
+                    pass
+                
+                ver_code = detected_version.replace(".", "")[:3]
+                candidates = [
+                    rf"C:\Program Files\AnsysEM\v{ver_code}\Win64",
+                    rf"C:\Program Files\Ansys Inc\AnsysEM\v{ver_code}\Win64",
+                ]
+                for path in candidates:
+                    if os.path.exists(path):
+                        return (detected_version, path)
+                
+                return (detected_version, None)
+        except:
+            pass
+            
+    elif _system == "Linux":
+        linux_configs = [
+            ("2024.1", "/media/large_disk/ansysLinux/AnsysEM/v241/Linux64"),
+            ("2024.1", "/opt/AnsysEM/v241/Linux64"),
+            ("2023.2", "/opt/AnsysEM/v232/Linux64"),
+            ("2022.1", "/opt/AnsysEM/v221/Linux64"),
+        ]
+        for ver, path in linux_configs:
+            if os.path.exists(path):
+                return (ver, path)
+    
+    return (None, None)
+
+# 检测版本和路径
+_detected_version, _ansys_path = detect_ansys_installation()
+
+if _detected_version:
+    AEDT_VERSION = _detected_version
+    print(f"[INFO] 检测到 ANSYS Electronics Desktop {AEDT_VERSION}")
+else:
+    AEDT_VERSION = "2024.1"
+    print(f"[WARN] 未检测到 ANSYS 版本，使用默认: {AEDT_VERSION}")
+
+if _ansys_path:
+    ver_code = AEDT_VERSION.replace(".", "")[:3]
+    os.environ[f"ANSYSEM_ROOT{ver_code}"] = _ansys_path
+    os.environ["ANSYSEM_DIR"] = _ansys_path
+    print(f"[INFO] ANSYS 安装路径: {_ansys_path}")
+else:
+    print(f"[INFO] 将使用 PyAEDT 默认路径检测")
+
+# 根据版本决定是否使用 gRPC (2022.2 及以上支持)
+_use_grpc = tuple(map(int, AEDT_VERSION.split("."))) >= (2022, 2)
+if not _use_grpc:
+    print(f"[INFO] AEDT {AEDT_VERSION} 不支持 gRPC，使用 COM 接口")
+
+# 必须在导入 pyaedt 之前设置 settings
+from pyaedt import settings
+settings.use_grpc_api = _use_grpc
+
+# 现在可以安全导入
 from pyaedt import Maxwell3d
 
 # ======================================================================
 # 配置参数
 # ======================================================================
-AEDT_VERSION = "2024.1" 
 PROJECT_NAME = "KYN28_V19_Final"
 SOLVER_TYPE = "EddyCurrent"
-
-if "ANSYSEM_ROOT241" not in os.environ:
-    os.environ["ANSYSEM_ROOT241"] = "/media/large_disk/ansysLinux/AnsysEM/v241/Linux64"
-    os.environ["ANSYSEM_DIR"] = "/media/large_disk/ansysLinux/AnsysEM/v241/Linux64"
 
 # ======================================================================
 # 隔板材料定义 (与参考文献一致)
@@ -79,32 +170,35 @@ def create_simulation(material_key: str):
     print(f"  相对磁导率: {mat['permeability']}")
     print("=" * 70)
     
-    # 连接 Maxwell
-    m3d = Maxwell3d(project=PROJECT_NAME, version=AEDT_VERSION, new_desktop=False)
-    
-    # 清理或创建设计
+    # 简化设计创建流程
     print("准备设计...")
+    
+    # 直接创建设计，使用 designname 参数
+    # 如果设计已存在，PyAEDT 会自动激活它
     try:
-        current_designs = m3d.design_list
-        if design_name in current_designs:
-            print(f"  清理现有设计: {design_name}")
-            m3d.set_active_design(design_name)
-            try:
-                m3d.stop_simulations()
-                time.sleep(1)
-            except:
-                pass
-            m3d.modeler.delete()
-            for s in m3d.setup_names:
-                m3d.delete_setup(s)
-        else:
-            print(f"  创建新设计: {design_name}")
-            m3d.insert_design(design_name)
-            m3d.solution_type = SOLVER_TYPE
+        m3d = Maxwell3d(
+            projectname=PROJECT_NAME, 
+            designname=design_name,
+            solution_type=SOLVER_TYPE,
+            specified_version=AEDT_VERSION, 
+            new_desktop_session=False
+        )
+        print(f"  设计 '{design_name}' 已就绪")
+        
+        # 如果设计已有对象，询问是否清除
+        existing_objs = m3d.modeler.object_names
+        if existing_objs:
+            print(f"  清除 {len(existing_objs)} 个现有对象...")
+            m3d.modeler.delete(existing_objs)
+        
+        # 清除现有 setup
+        for s in list(m3d.setup_names):
+            m3d.delete_setup(s)
+            
     except Exception as e:
-        print(f"  设计准备错误: {e}")
-        if design_name not in m3d.design_list:
-            m3d.insert_design(design_name)
+        print(f"  设计创建失败: {e}")
+        print("  请在 Maxwell 中手动删除同名设计后重试")
+        return None
     
     m3d.modeler.model_units = "mm"
     
@@ -148,24 +242,28 @@ def create_simulation(material_key: str):
     
     # --- 母排 (3-TMY 120×10mm，垂直放置) ---
     # 铜排沿 Z 方向 (高度)，宽度沿 X，厚度沿 Y
-    # 原点设在模型中心
+    # 使用数值坐标确保兼容性
+    
+    # A相母排 (Y = -space_pitch)
     bus_a = m3d.modeler.create_box(
-        origin=["-Bus_W/2", "-Bus_D/2 - Space", "-Bus_H/2"],
-        sizes=["Bus_W", "Bus_D", "Bus_H"],
+        origin=[-bus_w/2, -bus_d/2 - space_pitch, -bus_h/2],
+        sizes=[bus_w, bus_d, bus_h],
         name="Busbar_A", material="copper"
     )
     bus_a.color = (255, 0, 0)
     
+    # B相母排 (Y = 0)
     bus_b = m3d.modeler.create_box(
-        origin=["-Bus_W/2", "-Bus_D/2", "-Bus_H/2"],
-        sizes=["Bus_W", "Bus_D", "Bus_H"],
+        origin=[-bus_w/2, -bus_d/2, -bus_h/2],
+        sizes=[bus_w, bus_d, bus_h],
         name="Busbar_B", material="copper"
     )
     bus_b.color = (0, 255, 0)
     
+    # C相母排 (Y = +space_pitch)
     bus_c = m3d.modeler.create_box(
-        origin=["-Bus_W/2", "-Bus_D/2 + Space", "-Bus_H/2"],
-        sizes=["Bus_W", "Bus_D", "Bus_H"],
+        origin=[-bus_w/2, -bus_d/2 + space_pitch, -bus_h/2],
+        sizes=[bus_w, bus_d, bus_h],
         name="Busbar_C", material="copper"
     )
     bus_c.color = (255, 255, 0)
@@ -174,64 +272,74 @@ def create_simulation(material_key: str):
     # L 型角钢框架 (两条平行角钢，铜排从中间穿过)
     # ======================================================================
     # 参考图结构：
-    # - 两条 L 型角钢沿 Y 方向放置 (跨越三根铜排)
-    # - 角钢 1 在 +X 侧，角钢 2 在 -X 侧
-    # - 每条角钢截面：水平翼缘 (宽) + 垂直翼缘 (向下)
+    # - 矩形隔板框架 (口字型，铜排从中间穿过)
+    # - 参考原图：四边围成一个矩形框
     
-    # 角钢尺寸
-    angle_width = 50.0   # 翼缘宽度 (L 的两边)
-    angle_th = 3.0       # 角钢厚度
-    angle_length = frame_width  # 角钢长度 (沿 Y 方向)
+    # 框架尺寸
+    plate_th = 3.0       # 隔板厚度
+    plate_height = 50.0  # 隔板高度 (Z 方向)
+    plate_z = -plate_height / 2  # 隔板 Z 向居中
     
-    # 角钢 1 (+X 侧)：水平翼缘向外 (+X)，垂直翼缘向下 (-Z)
-    # 水平翼缘
-    angle1_horiz = m3d.modeler.create_box(
-        origin=[f"{bus_w/2 + gap}", f"-{angle_length}/2", "0"],
-        sizes=[f"{angle_width}", f"{angle_length}", f"{angle_th}"],
-        name="Angle1_Horiz"
+    # 框架外边界 (比铜排范围稍大)
+    frame_x_outer = bus_w/2 + gap + 30  # X 方向外边界
+    frame_y_outer = space_pitch + bus_d/2 + 30  # Y 方向外边界
+    
+    # 创建矩形框架 (4 条边)
+    # 前边 (+Y 侧)
+    front = m3d.modeler.create_box(
+        origin=[-frame_x_outer, frame_y_outer - plate_th, plate_z],
+        sizes=[2*frame_x_outer, plate_th, plate_height],
+        name="Frame_Front"
     )
-    # 垂直翼缘 (从水平翼缘内侧向下)
-    angle1_vert = m3d.modeler.create_box(
-        origin=[f"{bus_w/2 + gap}", f"-{angle_length}/2", f"-{angle_width}"],
-        sizes=[f"{angle_th}", f"{angle_length}", f"{angle_width}"],
-        name="Angle1_Vert"
+    # 后边 (-Y 侧)
+    back = m3d.modeler.create_box(
+        origin=[-frame_x_outer, -frame_y_outer, plate_z],
+        sizes=[2*frame_x_outer, plate_th, plate_height],
+        name="Frame_Back"
     )
-    m3d.modeler.unite([angle1_horiz.name, angle1_vert.name])
-    
-    # 角钢 2 (-X 侧)：水平翼缘向外 (-X)，垂直翼缘向下 (-Z)
-    # 水平翼缘
-    angle2_horiz = m3d.modeler.create_box(
-        origin=[f"-{bus_w/2 + gap + angle_width}", f"-{angle_length}/2", "0"],
-        sizes=[f"{angle_width}", f"{angle_length}", f"{angle_th}"],
-        name="Angle2_Horiz"
+    # 左边 (-X 侧)
+    left = m3d.modeler.create_box(
+        origin=[-frame_x_outer, -frame_y_outer, plate_z],
+        sizes=[plate_th, 2*frame_y_outer, plate_height],
+        name="Frame_Left"
     )
-    # 垂直翼缘 (从水平翼缘内侧向下)
-    angle2_vert = m3d.modeler.create_box(
-        origin=[f"-{bus_w/2 + gap + angle_th}", f"-{angle_length}/2", f"-{angle_width}"],
-        sizes=[f"{angle_th}", f"{angle_length}", f"{angle_width}"],
-        name="Angle2_Vert"
+    # 右边 (+X 侧)
+    right = m3d.modeler.create_box(
+        origin=[frame_x_outer - plate_th, -frame_y_outer, plate_z],
+        sizes=[plate_th, 2*frame_y_outer, plate_height],
+        name="Frame_Right"
     )
-    m3d.modeler.unite([angle2_horiz.name, angle2_vert.name])
     
-    # 合并两条角钢为一个整体
-    m3d.modeler.unite([angle1_horiz.name, angle2_horiz.name])
+    # 合并四边为一个整体
+    m3d.modeler.unite([front.name, back.name, left.name, right.name])
     
-    frame = m3d.modeler[angle1_horiz.name]
-    frame.name = "L_Frame"
+    frame = m3d.modeler[front.name]
+    frame.name = "Plate_Frame"
     frame.material_name = mat_name
     frame.color = (143, 175, 143)
     frame.transparency = 0.4
     
     # ======================================================================
-    # 仿真区域 (Z 方向 padding=0，母排端面在边界上)
+    # 仿真区域 (以铜排为中心对称，Z 方向铜排端面正好贴到边界)
     # ======================================================================
     print("  [4/7] 创建仿真区域...")
-    m3d.modeler.create_air_region(
-        x_pos=50, x_neg=50,
-        y_pos=50, y_neg=50,
-        z_pos=0, z_neg=0,  # Z 方向无 padding，母排端面在边界
-        is_percentage=True
+    
+    # 计算 Region 边界 (以模型原点为中心)
+    # X 方向: 框架外边界 + padding
+    x_half = frame_x_outer + 50  # 额外 50mm padding
+    # Y 方向: 加宽至 2 倍
+    y_half = (frame_y_outer + 50) * 2  # 原来的 2 倍
+    # Z 方向: 铜排端面正好贴到边界
+    z_half = bus_h / 2  # 铜排高度的一半
+    
+    # 创建 Region (手动创建 box 并设为 vacuum)
+    region = m3d.modeler.create_box(
+        origin=[-x_half, -y_half, -z_half],
+        sizes=[2*x_half, 2*y_half, 2*z_half],
+        name="Region",
+        material="vacuum"
     )
+    region.transparency = 0.9
     
     # ======================================================================
     # 电流激励 (使用母排 Z 方向端面)
@@ -291,7 +399,13 @@ def create_simulation(material_key: str):
     setup.props["PercentRefinement"] = 30
     setup.props["BasisOrder"] = 1
     
-    # 场图
+    # 场图 (先删除已有的再创建)
+    for plot_name in ["Plot_OhmicLoss", "Plot_J", "Plot_Mag_B"]:
+        try:
+            m3d.post.delete_field_plot(plot_name)
+        except:
+            pass
+    
     m3d.post.create_fieldplot_surface([frame.name], "Ohmic_Loss", plot_name="Plot_OhmicLoss")
     m3d.post.create_fieldplot_surface([bus_a.name, bus_b.name, bus_c.name], "J", plot_name="Plot_J")
     m3d.post.create_fieldplot_surface([frame.name, bus_a.name, bus_b.name, bus_c.name], "Mag_B", plot_name="Plot_Mag_B")
@@ -317,6 +431,7 @@ def main():
     parser = argparse.ArgumentParser(description="Maxwell 涡流仿真设置")
     parser.add_argument("--material", "-m", choices=["galvalume", "stainless"], default="galvalume", help="隔板材料: galvalume(覆铝锌板) 或 stainless(不锈钢板)")
     parser.add_argument("--all", "-a", action="store_true", help="仿真所有材料")
+    parser.add_argument("--analyze", action="store_true", help="创建后自动运行仿真分析")
     
     args = parser.parse_args()
     
@@ -324,9 +439,9 @@ def main():
     print("开关柜金属隔板涡流损耗仿真")
     print("=" * 70)
     
+    designs = []
     if args.all:
         print("模式: 材料对比 (钢板 + 铝锌板)")
-        designs = []
         for mat_key in PLATE_MATERIALS:
             design = create_simulation(mat_key)
             designs.append(design)
@@ -334,12 +449,48 @@ def main():
         print(f"\n创建的设计: {designs}")
     else:
         print(f"材料: {PLATE_MATERIALS[args.material]['description']}")
-        create_simulation(args.material)
+        design = create_simulation(args.material)
+        if design:
+            designs.append(design)
+    
+    # 自动运行仿真
+    if args.analyze and designs:
+        print("\n" + "=" * 70)
+        print("运行仿真分析...")
+        print("=" * 70)
+        
+        try:
+            m3d = Maxwell3d(
+                projectname=PROJECT_NAME,
+                designname=designs[0],
+                specified_version=AEDT_VERSION,
+                new_desktop_session=False
+            )
+            
+            # 运行所有设计的分析
+            for design_name in designs:
+                if design_name:
+                    print(f"\n分析设计: {design_name}")
+                    m3d.set_active_design(design_name)
+                    m3d.analyze_setup("Setup1")
+                    print(f"  ✓ {design_name} 分析完成")
+            
+            m3d.save_project()
+            m3d.release_desktop(close_projects=False, close_desktop=False)
+            print("\n✅ 所有仿真分析完成!")
+            
+        except Exception as e:
+            print(f"\n✗ 仿真运行出错: {e}")
+            print("  请在 Maxwell 中手动运行 Analyze All")
     
     print("\n" + "=" * 70)
-    print("完成! 下一步:")
-    print("  1. 在 Maxwell 中点击 'Analyze All' 运行仿真")
-    print("  2. 仿真完成后运行 maxwell_report.py 生成报告")
+    if args.analyze:
+        print("完成! 可运行 maxwell_report.py 生成报告")
+    else:
+        print("完成! 下一步:")
+        print("  1. 在 Maxwell 中点击 'Analyze All' 运行仿真")
+        print("     或运行: python maxwell_setup.py --analyze")
+        print("  2. 仿真完成后运行 maxwell_report.py 生成报告")
     print("=" * 70)
 
 
