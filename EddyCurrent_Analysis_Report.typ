@@ -26,7 +26,7 @@
   #v(1.5cm)
   #text(size: 22pt, weight: "bold")[开关柜金属隔板涡流损耗仿真分析报告]
   #v(0.4cm)
-  #text(size: 14pt, weight: "bold")[KYN28-12A 型高压开关柜 · Maxwell 涡流场仿真]
+  #text(size: 14pt, weight: "bold")[KYN28-12/4000A 型高压开关柜 · Maxwell 涡流场仿真]
   #v(1cm)
   #line(length: 50%, stroke: 0.5pt)
   #v(0.8cm)
@@ -45,7 +45,7 @@
 
 = 概述
 
-本报告对 KYN28-12A 型高压开关柜的金属隔板在三相交流母排电流作用下的涡流损耗进行有限元仿真分析。通过 ANSYS Maxwell 涡流场求解器计算隔板上的感应涡流及其产生的热损耗，为开关柜的热设计提供理论依据。
+本报告对 KYN28-12/4000A 型高压开关柜的金属隔板在三相交流母排电流作用下的涡流损耗进行有限元仿真分析。通过 ANSYS Maxwell 涡流场求解器计算隔板上的感应涡流及其产生的热损耗，为开关柜的热设计提供理论依据。
 
 #block(fill: rgb("#e3f2fd"), inset: 10pt, radius: 4pt, width: 100%)[
   *分析目的*：评估不同隔板材料对涡流损耗的影响，为材料选型提供数据支撑，指导开关柜热设计优化。
