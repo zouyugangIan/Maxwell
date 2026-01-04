@@ -2,6 +2,8 @@
 maxwellResults/
 specs/kyn28-apdl-script-generator/
 asset/*.SAT
+seismicResults/
+simplifiedDrawings/
 
 # Maxwell/Ansys temporary files
 *.lock
