@@ -133,20 +133,30 @@ def main(voltage=None, analyze=False, fillet_radius=0):
             print(f"  {n[:20]}: {v/1000:+.0f}kV")
         except: pass
     
-    gnd = [n for n in frames if n not in busbars][:15]
+    # 接地处理：除母线外的所有导电部件默认接地
+    gnd = [n for n in objs if n not in busbars]
     if gnd:
         try:
-            m3d.assign_voltage(gnd, 0, name="GND")
-            print(f"  接地: {len(gnd)} 个")
+            # 分批赋值以避免命令过长
+            chunk_size = 50
+            for i in range(0, len(gnd), chunk_size):
+                chunk = gnd[i:i + chunk_size]
+                m3d.assign_voltage(chunk, 0, name=f"GND_{i//chunk_size}")
+            print(f"  接地: {len(gnd)} 个部件 (已全接地)")
         except: pass
     
     # 网格
     print("\n[7] 网格设置...")
     try:
-        m3d.mesh.assign_length_mesh(assignment=objs, maximum_length=30, name="Global")
+        # 全局网格
+        m3d.mesh.assign_length_mesh(assignment=objs, maximum_length=30, name="Global_Parts")
+        # 母排加密
         if busbars:
-            m3d.mesh.assign_length_mesh(assignment=busbars, maximum_length=8, name="Busbar")
-        print("  ✓ 全局30mm / 母排8mm")
+            m3d.mesh.assign_length_mesh(assignment=busbars, maximum_length=8, name="Busbar_Mesh")
+        # 空气域加密 (解决云图波纹)
+        if "Region" in m3d.modeler.solid_names:
+             m3d.mesh.assign_length_mesh(assignment=["Region"], maximum_length=50, name="Air_Mesh")
+        print("  ✓ 网格优化: 全局30mm / 母排8mm / 空气50mm")
     except: pass
     
     # 分析设置
