@@ -1,5 +1,6 @@
 # User specified exclusions (from image)
 maxwellResults/
+fluentResults/
 specs/kyn28-apdl-script-generator/
 asset/*.SAT
 seismicResults/
@@ -10,11 +11,19 @@ simplifiedDrawings/
 *.auto
 *.log
 *.err
+*.tmp
 
 # Maxwell Results folders (Standard naming convention)
 *.mxwlresults/
-*.aEdt
-*.pEdt
+*.aedt
+*.aedtresults/
+*_results/
+
+# VacuumInterrupter temporary/batch files
+VacuumInterrupter/batch.log
+
+# PyAEDT logs
+pyaedt*.log
 
 # Environment and Output
 .venv/
