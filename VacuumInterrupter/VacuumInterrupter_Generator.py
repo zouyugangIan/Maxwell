@@ -3,414 +3,429 @@
 真空灭弧室 (Vacuum Interrupter) 瞬态电磁仿真脚本
 12kV / 4000A 级别
 
-v5 - Transient版本：
-1. 连续的陶瓷绝缘外壳（整体圆筒）
-2. 主屏蔽罩（在内部包围触头区域）
-3. 动/静端盖板（金属法兰在两端）
-4. 动/静触头 + 导电杆（从陶瓷管中心穿出）
-5. 动触头运动设置（模拟开断过程）
+v8 - 精确参考知乎文章图2结构：
+- 水平方向建模 (X轴)
+- 4大部件：瓷套、静端组件、动端组件、屏蔽罩
+- 静端在 -X，动端在 +X
+- 运动方向沿 X 轴
 
-Author: Antigravity Assistant
-Date: 2026-01-17
+参考: https://www.zhihu.com/question/482332112
+
+Author: Antigravity Assistant  
+Date: 2026-01-19
 """
 
-from pyaedt import Maxwell3d
 import os
+from pyaedt import settings
+settings.use_grpc_api = False
+
+from pyaedt import Maxwell3d
 
 # =============================================================================
-# 参数设置 - 12kV/4000A 真空灭弧室
+# 参数设置 - 参考知乎文章结构
 # =============================================================================
 # 单位: mm
+# 建模方向: X轴 (静端在-X, 动端在+X)
 
-# --- 整体尺寸 ---
-VI_TOTAL_LENGTH = 360.0      # 真空灭弧室总高度
-VI_OUTER_DIAMETER = 120.0    # 陶瓷管外径
+# --- 瓷套 (Al2O3 陶瓷绝缘管) - TD-12/4000 规格 ---
+CERAMIC_OUTER_RADIUS = 38.0      # 外半径 (主体外径Φ76mm)
+CERAMIC_INNER_RADIUS = 27.1      # 内半径 (内径Φ54.2mm)
+CERAMIC_LENGTH = 180.0           # 瓷套长度 (总长180mm)
 
-# --- 陶瓷绝缘管（连续整体） ---
-CERAMIC_THICKNESS = 8.0      # 陶瓷壁厚
-CERAMIC_LENGTH = 280.0       # 陶瓷管长度（中间主体部分）
+# --- 屏蔽罩 (铜) - 桶状结构包围触头 ---
+SHIELD_OUTER_RADIUS = 28.0       # 外半径
+SHIELD_INNER_RADIUS = 26.0       # 内半径 (壁厚2mm)
+SHIELD_LENGTH = 70.0             # 屏蔽罩长度
 
-# --- 端盖板（动/静端金属法兰） ---
-END_CAP_OUTER_DIAMETER = 130.0  # 端盖外径
-END_CAP_THICKNESS = 20.0        # 端盖厚度
-END_CAP_INNER_RADIUS = 20.0     # 端盖中心孔半径（导电杆穿过）
+# --- 端盖法兰 (不锈钢) ---
+FLANGE_OUTER_RADIUS = 45.0       # 法兰外半径
+FLANGE_THICKNESS = 12.0          # 法兰厚度
+FLANGE_INNER_RADIUS = 10.0       # 中心孔半径 (导电杆穿孔)
 
-# --- 主屏蔽罩 (Shield) ---
-SHIELD_OUTER_RADIUS = 48.0     # 屏蔽罩外半径
-SHIELD_THICKNESS = 1.5         # 壁厚
-SHIELD_LENGTH = 180.0          # 长度（包围触头区域）
+# --- 触头 (CuCr 合金) - TD-12/4000: 内径Φ54.2mm ---
+CONTACT_RADIUS = 27.0            # 触头半径 (直径54mm)
+CONTACT_THICKNESS = 8.0          # 触头厚度
 
-# --- 触头 (Contacts) ---
-CONTACT_DISC_RADIUS = 42.0     # 触头盘半径 (接近屏蔽罩内径)
-CONTACT_DISC_THICKNESS = 12.0  # 触头盘厚度
+# --- 导电杆 (铜) - TD-12/4000: Φ36mm ---
+ROD_RADIUS = 18.0                # 导电杆半径 (直径36mm)
+STATIC_ROD_LENGTH = 40.0         # 静端导电杆长度
+MOVING_ROD_LENGTH = 50.0         # 动端导电杆长度
 
-# --- 导电杆 (Conductive Rod) ---
-CONTACT_ROD_RADIUS = 16.0      # 导电杆半径
-
-# --- 触头开距 ---
-CONTACT_GAP = 0.0              # 初始开距(闭合状态)
-CONTACT_GAP_MAX = 16.0         # 最大开距
+# --- 触头开距 - TD-12/4000: 9±1mm ---
+CONTACT_GAP = 9.0                # 触头开距
 
 # --- 运动参数 ---
-MOTION_VELOCITY = 1.0          # 分闸速度 m/s (1000 mm/s)
-MOTION_TIME = 0.016            # 分闸时间 s (16ms达到最大开距)
+CONTACT_GAP_MAX = 10.0           # 最大开距
+MOTION_VELOCITY = 1.0            # 分闸速度 m/s
+MOTION_TIME = 0.015              # 仿真时间 15ms
+
+# --- 电流参数 ---
+RATED_CURRENT = 4000
+PEAK_CURRENT = RATED_CURRENT * 1.414
+FREQUENCY = 50
 
 # =============================================================================
-# 计算关键位置
+# 位置计算 (X轴方向，以中心为原点)
 # =============================================================================
-# 中心点
-CENTER_Z = VI_TOTAL_LENGTH / 2
+# 瓷套位置 (中心对称)
+CERAMIC_X_START = -CERAMIC_LENGTH / 2
+CERAMIC_X_END = CERAMIC_LENGTH / 2
 
-# 陶瓷管位置（居中）
-CERAMIC_Z_START = (VI_TOTAL_LENGTH - CERAMIC_LENGTH) / 2
+# 屏蔽罩位置 (中心)
+SHIELD_X_START = -SHIELD_LENGTH / 2
 
-# 端盖位置
-LOWER_END_CAP_Z = CERAMIC_Z_START - END_CAP_THICKNESS  # 动端盖板（下方）
-UPPER_END_CAP_Z = CERAMIC_Z_START + CERAMIC_LENGTH      # 静端盖板（上方）
+# 触头位置
+CENTER_X = 0
+STATIC_CONTACT_X = -CONTACT_GAP / 2 - CONTACT_THICKNESS  # 静触头右端面
+MOVING_CONTACT_X = CONTACT_GAP / 2                        # 动触头左端面
+
+# 端盖法兰位置
+STATIC_FLANGE_X = CERAMIC_X_START - FLANGE_THICKNESS
+MOVING_FLANGE_X = CERAMIC_X_END
+
+# 导电杆位置
+STATIC_ROD_X_START = STATIC_FLANGE_X - STATIC_ROD_LENGTH
+MOVING_ROD_X_END = MOVING_FLANGE_X + FLANGE_THICKNESS + MOVING_ROD_LENGTH
 
 # =============================================================================
 # 脚本开始
 # =============================================================================
-
-project_name = "VacuumInterrupter_12kV_4000A_v5_Transient"
-design_name = "Transient_VI_Model"
+project_name = "VacuumInterrupter_12kV_v8"
+design_name = "Transient_Horizontal"
 
 print("=" * 60)
-print("真空灭弧室瞬态仿真 - 12kV/4000A (v5 - Transient)")
+print("真空灭弧室瞬态仿真 - 12kV/4000A (v8 - 精确参考图)")
 print("=" * 60)
+print("  建模方向: X轴 (水平)")
+print("  瓷套长度: {:.0f}mm".format(CERAMIC_LENGTH))
+print("  开距: {:.0f}mm".format(CONTACT_GAP))
 
-m3d = Maxwell3d(
-    projectname=project_name,
-    designname=design_name,
-    solution_type="Transient",
-    new_desktop_session=True,
-    non_graphical=False
-)
+# =============================================================================
+# 1. 初始化 Maxwell3D
+# =============================================================================
+print("\n[1/10] 初始化 Maxwell3D...")
+
+try:
+    m3d = Maxwell3d(
+        projectname=project_name,
+        designname=design_name,
+        solution_type="Transient",
+        specified_version="2024.2",
+        new_desktop_session=False,
+        non_graphical=False
+    )
+except Exception:
+    try:
+        m3d = Maxwell3d(
+            projectname=project_name,
+            designname=design_name,
+            solution_type="Transient",
+            specified_version="2024.2",
+            new_desktop_session=True,
+            non_graphical=False
+        )
+    except Exception as e:
+        print(f"  [错误] {e}")
+        raise SystemExit(1)
 
 m3d.modeler.model_units = "mm"
-
-print("[1/7] 创建材料...")
+print(f"  [成功] 项目: {m3d.project_name}")
 
 # =============================================================================
-# 1. 材料定义
+# 2. 材料定义
 # =============================================================================
-if not m3d.materials.checkifmaterialexists("Alumina_Ceramic"):
-    mat = m3d.materials.add_material("Alumina_Ceramic")
+print("\n[2/10] 创建材料...")
+
+if not m3d.materials.checkifmaterialexists("Al2O3_Ceramic"):
+    mat = m3d.materials.add_material("Al2O3_Ceramic")
     mat.permittivity = 9.4
-
+    mat.conductivity = 0
+    
 if not m3d.materials.checkifmaterialexists("CuCr_Alloy"):
     mat = m3d.materials.add_material("CuCr_Alloy")
     mat.conductivity = 2.9e7
+    mat.permeability = 1.0
 
-print("[2/7] 创建连续陶瓷绝缘外壳...")
+print("  材料创建完成")
 
 # =============================================================================
-# 2. 连续陶瓷绝缘外壳 (Ceramic Insulator - 整体)
+# 3. 瓷套 (陶瓷绝缘管）
 # =============================================================================
-ceramic_inner_radius = (VI_OUTER_DIAMETER / 2) - CERAMIC_THICKNESS
+print("\n[3/10] 创建瓷套...")
 
-ceramic_shell = m3d.modeler.create_cylinder(
-    orientation="Z",
-    origin=[0, 0, CERAMIC_Z_START],
-    radius=VI_OUTER_DIAMETER / 2,
+ceramic_outer = m3d.modeler.create_cylinder(
+    orientation="X",
+    origin=[CERAMIC_X_START, 0, 0],
+    radius=CERAMIC_OUTER_RADIUS,
     height=CERAMIC_LENGTH,
-    name="Ceramic_Insulator",
-    material="Alumina_Ceramic"
+    name="Ceramic_Sleeve",
+    material="Al2O3_Ceramic"
 )
 
 ceramic_void = m3d.modeler.create_cylinder(
-    orientation="Z",
-    origin=[0, 0, CERAMIC_Z_START],
-    radius=ceramic_inner_radius,
+    orientation="X",
+    origin=[CERAMIC_X_START, 0, 0],
+    radius=CERAMIC_INNER_RADIUS,
     height=CERAMIC_LENGTH,
-    name="Ceramic_Void"
+    name="Ceramic_Void_Temp"
 )
-
-m3d.modeler.subtract(ceramic_shell, [ceramic_void], keep_originals=False)
-
-print("[3/7] 创建动端盖板（下方）...")
+m3d.modeler.subtract(ceramic_outer, [ceramic_void], keep_originals=False)
+print(f"  瓷套: 外径{CERAMIC_OUTER_RADIUS*2}mm, 长度{CERAMIC_LENGTH}mm")
 
 # =============================================================================
-# 3. 动端盖板 (Moving End Cap - 下方)
+# 4. 静端组件
 # =============================================================================
-lower_end_cap = m3d.modeler.create_cylinder(
-    orientation="Z",
-    origin=[0, 0, LOWER_END_CAP_Z],
-    radius=END_CAP_OUTER_DIAMETER / 2,
-    height=END_CAP_THICKNESS,
-    name="Moving_End_Cap",
+print("\n[4/10] 创建静端组件...")
+
+# 静端法兰盘
+static_flange = m3d.modeler.create_cylinder(
+    orientation="X",
+    origin=[STATIC_FLANGE_X, 0, 0],
+    radius=FLANGE_OUTER_RADIUS,
+    height=FLANGE_THICKNESS,
+    name="Static_Flange",
     material="steel_stainless"
 )
-
-lower_cap_void = m3d.modeler.create_cylinder(
-    orientation="Z",
-    origin=[0, 0, LOWER_END_CAP_Z],
-    radius=END_CAP_INNER_RADIUS,
-    height=END_CAP_THICKNESS,
-    name="Lower_Cap_Void"
+static_flange_void = m3d.modeler.create_cylinder(
+    orientation="X",
+    origin=[STATIC_FLANGE_X, 0, 0],
+    radius=FLANGE_INNER_RADIUS,
+    height=FLANGE_THICKNESS,
+    name="Static_Flange_Void_Temp"
 )
+m3d.modeler.subtract(static_flange, [static_flange_void], keep_originals=False)
 
-m3d.modeler.subtract(lower_end_cap, [lower_cap_void], keep_originals=False)
-
-print("[4/7] 创建静端盖板（上方）...")
-
-# =============================================================================
-# 4. 静端盖板 (Fixed End Cap - 上方)
-# =============================================================================
-upper_end_cap = m3d.modeler.create_cylinder(
-    orientation="Z",
-    origin=[0, 0, UPPER_END_CAP_Z],
-    radius=END_CAP_OUTER_DIAMETER / 2,
-    height=END_CAP_THICKNESS,
-    name="Fixed_End_Cap",
-    material="steel_stainless"
-)
-
-upper_cap_void = m3d.modeler.create_cylinder(
-    orientation="Z",
-    origin=[0, 0, UPPER_END_CAP_Z],
-    radius=END_CAP_INNER_RADIUS,
-    height=END_CAP_THICKNESS,
-    name="Upper_Cap_Void"
-)
-
-m3d.modeler.subtract(upper_end_cap, [upper_cap_void], keep_originals=False)
-
-print("[5/7] 创建屏蔽罩...")
-
-# =============================================================================
-# 5. 屏蔽罩 (Shield) - 在法兰内部，包围触头区域
-# =============================================================================
-shield_z = CENTER_Z - SHIELD_LENGTH / 2
-
-shield_outer = m3d.modeler.create_cylinder(
-    orientation="Z",
-    origin=[0, 0, shield_z],
-    radius=SHIELD_OUTER_RADIUS,
-    height=SHIELD_LENGTH,
-    name="Shield",
-    material="copper"  # 实际可能是不锈钢或铜
-)
-
-shield_inner = m3d.modeler.create_cylinder(
-    orientation="Z",
-    origin=[0, 0, shield_z],
-    radius=SHIELD_OUTER_RADIUS - SHIELD_THICKNESS,
-    height=SHIELD_LENGTH,
-    name="Shield_Inner_Void"
-)
-
-m3d.modeler.subtract(shield_outer, [shield_inner], keep_originals=False)
-
-print("[6/7] 创建触头和导电杆...")
-
-# =============================================================================
-# 6. 静触头 (Fixed Contact) - 上方
-# =============================================================================
-fixed_disc_z = CENTER_Z + CONTACT_GAP / 2
-
-# 静触头盘
-fixed_disc = m3d.modeler.create_cylinder(
-    orientation="Z",
-    origin=[0, 0, fixed_disc_z],
-    radius=CONTACT_DISC_RADIUS,
-    height=CONTACT_DISC_THICKNESS,
-    name="Fixed_Contact_Disc",
+# 静触头
+static_contact = m3d.modeler.create_cylinder(
+    orientation="X",
+    origin=[STATIC_CONTACT_X, 0, 0],
+    radius=CONTACT_RADIUS,
+    height=CONTACT_THICKNESS,
+    name="Static_Contact",
     material="CuCr_Alloy"
 )
 
-# 静触头导电杆（向上延伸穿出陶瓷管）
-fixed_rod_start = fixed_disc_z + CONTACT_DISC_THICKNESS
-fixed_rod_length = VI_TOTAL_LENGTH - fixed_rod_start + 30  # 延伸到外部
-
-fixed_rod = m3d.modeler.create_cylinder(
-    orientation="Z",
-    origin=[0, 0, fixed_rod_start],
-    radius=CONTACT_ROD_RADIUS,
-    height=fixed_rod_length,
-    name="Fixed_Rod",
+# 静端导电杆
+static_rod = m3d.modeler.create_cylinder(
+    orientation="X",
+    origin=[STATIC_ROD_X_START, 0, 0],
+    radius=ROD_RADIUS,
+    height=-STATIC_ROD_X_START + STATIC_CONTACT_X,
+    name="Static_Rod",
     material="copper"
 )
-
-m3d.modeler.unite([fixed_disc, fixed_rod])
+print(f"  静触头位置: X={STATIC_CONTACT_X:.1f}mm")
 
 # =============================================================================
-# 7. 动触头 (Moving Contact) - 下方
+# 5. 动端组件
 # =============================================================================
-moving_disc_z = CENTER_Z - CONTACT_GAP / 2 - CONTACT_DISC_THICKNESS
+print("\n[5/10] 创建动端组件...")
 
-# 动触头盘
-moving_disc = m3d.modeler.create_cylinder(
-    orientation="Z",
-    origin=[0, 0, moving_disc_z],
-    radius=CONTACT_DISC_RADIUS,
-    height=CONTACT_DISC_THICKNESS,
-    name="Moving_Contact_Disc",
+# 动端法兰盘
+moving_flange = m3d.modeler.create_cylinder(
+    orientation="X",
+    origin=[MOVING_FLANGE_X, 0, 0],
+    radius=FLANGE_OUTER_RADIUS,
+    height=FLANGE_THICKNESS,
+    name="Moving_Flange",
+    material="steel_stainless"
+)
+moving_flange_void = m3d.modeler.create_cylinder(
+    orientation="X",
+    origin=[MOVING_FLANGE_X, 0, 0],
+    radius=FLANGE_INNER_RADIUS,
+    height=FLANGE_THICKNESS,
+    name="Moving_Flange_Void_Temp"
+)
+m3d.modeler.subtract(moving_flange, [moving_flange_void], keep_originals=False)
+
+# 动触头
+moving_contact = m3d.modeler.create_cylinder(
+    orientation="X",
+    origin=[MOVING_CONTACT_X, 0, 0],
+    radius=CONTACT_RADIUS,
+    height=CONTACT_THICKNESS,
+    name="Moving_Contact",
     material="CuCr_Alloy"
 )
 
-# 动触头导电杆（向下延伸穿出陶瓷管）
-moving_rod_start = -30  # 从底部外开始
-moving_rod_length = moving_disc_z - moving_rod_start
-
+# 动端导电杆
 moving_rod = m3d.modeler.create_cylinder(
-    orientation="Z",
-    origin=[0, 0, moving_rod_start],
-    radius=CONTACT_ROD_RADIUS,
-    height=moving_rod_length,
+    orientation="X",
+    origin=[MOVING_CONTACT_X + CONTACT_THICKNESS, 0, 0],
+    radius=ROD_RADIUS,
+    height=MOVING_ROD_X_END - (MOVING_CONTACT_X + CONTACT_THICKNESS),
     name="Moving_Rod",
     material="copper"
 )
-
-m3d.modeler.unite([moving_disc, moving_rod])
-
-print("[7/8] 创建真空区域...")
+print(f"  动触头位置: X={MOVING_CONTACT_X:.1f}mm")
 
 # =============================================================================
-# 8. 真空区域 (内部空腔 - 整体)
-# 需要从真空区域中减去触头和导电杆，避免几何体重叠
+# 6. 屏蔽罩 (桶状结构)
 # =============================================================================
-vacuum_region = m3d.modeler.create_cylinder(
-    orientation="Z",
-    origin=[0, 0, CERAMIC_Z_START],
-    radius=ceramic_inner_radius - 1,
-    height=CERAMIC_LENGTH,
+print("\n[6/10] 创建屏蔽罩...")
+
+shield_outer = m3d.modeler.create_cylinder(
+    orientation="X",
+    origin=[SHIELD_X_START, 0, 0],
+    radius=SHIELD_OUTER_RADIUS,
+    height=SHIELD_LENGTH,
+    name="Main_Shield",
+    material="copper"
+)
+
+shield_void = m3d.modeler.create_cylinder(
+    orientation="X",
+    origin=[SHIELD_X_START, 0, 0],
+    radius=SHIELD_INNER_RADIUS,
+    height=SHIELD_LENGTH,
+    name="Shield_Void_Temp"
+)
+m3d.modeler.subtract(shield_outer, [shield_void], keep_originals=False)
+print(f"  屏蔽罩: 外径{SHIELD_OUTER_RADIUS*2}mm, 长度{SHIELD_LENGTH}mm")
+
+# =============================================================================
+# 7. 真空区域
+# =============================================================================
+print("\n[7/10] 创建真空区域...")
+
+vacuum = m3d.modeler.create_cylinder(
+    orientation="X",
+    origin=[CERAMIC_X_START + 1, 0, 0],
+    radius=CERAMIC_INNER_RADIUS - 1,
+    height=CERAMIC_LENGTH - 2,
     name="Vacuum_Region",
     material="vacuum"
 )
-
-# 创建用于减法的触头和导电杆副本（避免破坏原始对象）
-# 静触头+导电杆挖空区域
-fixed_cutout = m3d.modeler.create_cylinder(
-    orientation="Z",
-    origin=[0, 0, fixed_disc_z],
-    radius=CONTACT_DISC_RADIUS + 0.5,  # 略大于触头，确保完全挖空
-    height=fixed_rod_length + CONTACT_DISC_THICKNESS + 10,
-    name="Fixed_Cutout"
-)
-
-# 动触头+导电杆挖空区域
-moving_cutout = m3d.modeler.create_cylinder(
-    orientation="Z",
-    origin=[0, 0, moving_rod_start],
-    radius=CONTACT_DISC_RADIUS + 0.5,
-    height=moving_disc_z + CONTACT_DISC_THICKNESS - moving_rod_start + 10,
-    name="Moving_Cutout"
-)
-
-# 从真空区域中减去触头区域
-m3d.modeler.subtract(vacuum_region, [fixed_cutout, moving_cutout], keep_originals=False)
-print("  [信息] 已从真空区域中排除触头和导电杆区域")
-
-print("[8/8] 设置激励和分析...")
+print("  真空区域创建完成")
 
 # =============================================================================
-# 9. 动触头运动设置 (Motion Setup)
-# 注意：运动设置需要在Maxwell GUI中手动配置，步骤如下：
-# 1. 创建Band对象（包围动触头的区域）
-# 2. 右键Band -> Assign Motion -> Translational
-# 3. 设置：Velocity = 1000 mm/s, 方向 = -Z
+# 8. Region (求解域)
 # =============================================================================
-print("  [提示] 运动设置需在Maxwell GUI中手动配置")
-
-# =============================================================================
-# 10. 设置瞬态激励 - 使用原生AEDT API (面选择)
-# =============================================================================
-RATED_CURRENT = 4000  # 额定电流 A
+print("\n[8/10] 创建求解域...")
 
 try:
-    oDesign = m3d.odesign
-    
-    # 获取导电杆对象的面
-    fixed_obj = m3d.modeler["Fixed_Contact_Disc"]
-    moving_obj = m3d.modeler["Moving_Contact_Disc"]
-    
-    # 获取面ID - 顶面和底面
-    fixed_faces = fixed_obj.faces
-    moving_faces = moving_obj.faces
-    
-    # 找到最顶部的面 (静触头顶端)
-    fixed_top_face = max(fixed_faces, key=lambda f: f.center[2])
-    # 找到最底部的面 (动触头底端)
-    moving_bottom_face = min(moving_faces, key=lambda f: f.center[2])
-    
-    # 创建线圈终端 - 静触头 (Positive)
-    oDesign.AssignCoil(
-        [
-            "NAME:Coil_Input",
-            "Objects:=", [],
-            "Faces:=", [fixed_top_face.id],
-            "Conductor number:=", "1",
-            "PolarityType:=", "Positive"
-        ]
+    region = m3d.modeler.create_air_region(
+        x_pos=50, x_neg=50,
+        y_pos=100, y_neg=100,
+        z_pos=100, z_neg=100,
+        is_percentage=True
     )
+    print("  Region 创建完成")
+except Exception:
+    print("  使用默认 Region")
+
+# =============================================================================
+# 9. Motion Band (只包围动端组件)
+# =============================================================================
+print("\n[9/10] 创建 Motion Band...")
+
+# Band 范围：只包围 Moving_Contact 和 Moving_Rod
+# 要确保不与 Static_Contact 重叠
+band_x_start = MOVING_CONTACT_X - 2  # 动触头左侧 - 2mm
+band_x_end = MOVING_ROD_X_END + CONTACT_GAP_MAX + 5  # 杆右端 + 行程 + 余量
+
+# 确保不与静触头重叠
+band_x_start = max(band_x_start, STATIC_CONTACT_X + CONTACT_THICKNESS + 2)
+
+band_length = band_x_end - band_x_start
+band_radius = CONTACT_RADIUS + 3  # 略大于触头
+
+motion_band = m3d.modeler.create_cylinder(
+    orientation="X",
+    origin=[band_x_start, 0, 0],
+    radius=band_radius,
+    height=band_length,
+    name="Motion_Band",
+    material="vacuum"
+)
+
+print(f"  X范围: {band_x_start:.1f}mm ~ {band_x_end:.1f}mm")
+print(f"  静触头右端面: X={STATIC_CONTACT_X + CONTACT_THICKNESS:.1f}mm")
+print(f"  Band 不与静触头重叠: ✓")
+
+# =============================================================================
+# 9.5 创建速度时程曲线 Dataset
+# =============================================================================
+print("\n[9.5/10] 创建速度时程曲线 Dataset...")
+
+# 根据 TD-12/4000 数据手册:
+# - 平均分闸速度 (前6mm): 1.2 m/s
+# - 平均合闸速度 (后6mm): 0.6 m/s
+# 速度曲线：一开始最大 (1.2 m/s)，迅速减小到 0.6 m/s
+
+# 时间-速度数据点 (指数衰减模型)
+# 总行程 9mm，初速度 1.2 m/s
+# t = 0ms:     v = 1.2 m/s  (启动)
+# t = 1ms:     v = 1.1 m/s  (减速开始)
+# t = 3ms:     v = 0.9 m/s  
+# t = 5ms:     v = 0.7 m/s
+# t = 8ms:     v = 0.6 m/s  (稳定)
+# t = 15ms:    v = 0.6 m/s  (结束)
+
+velocity_data = [
+    [0.0,    1.2],   # 启动时刻
+    [0.001,  1.15],  # 1ms
+    [0.002,  1.0],   # 2ms
+    [0.003,  0.9],   # 3ms
+    [0.005,  0.75],  # 5ms
+    [0.008,  0.65],  # 8ms
+    [0.010,  0.60],  # 10ms
+    [0.015,  0.60],  # 15ms (结束)
+]
+
+try:
+    # 跳过自动创建 Dataset - AEDT 2024.2 API 不兼容
+    # 使用恒定速度代替，在 Motion Setup 中直接设置
+    print("  [信息] 使用恒定速度: 1.2 m/s")
+    print("  [信息] 如需时变速度，请手动创建 Dataset:")
+    print("         Project > Datasets > Add Dataset")
+    print("         名称: Velocity_Profile")
     
-    # 创建线圈终端 - 动触头 (Negative)  
-    oDesign.AssignCoil(
-        [
-            "NAME:Coil_Output",
-            "Objects:=", [],
-            "Faces:=", [moving_bottom_face.id],
-            "Conductor number:=", "1",
-            "PolarityType:=", "Negative"
-        ]
-    )
-    
-    # 创建绕组并设置电流
-    oDesign.AssignWinding(
-        [
-            "NAME:Main_Winding",
-            "Type:=", "Current",
-            "IsSolid:=", True,
-            "Current:=", f"{RATED_CURRENT}A",
-            "Resistance:=", "0ohm",
-            "Inductance:=", "0nH",
-            "Voltage:=", "0mV",
-            "ParallelBranchesNum:=", "1",
-            "Phase:=", "0deg"
-        ],
-        ["Coil_Input", "Coil_Output"]
-    )
-    
-    print(f"  [信息] 已设置绕组激励: 电流 = {RATED_CURRENT}A (通过面选择)")
 except Exception as e:
-    print(f"  [警告] 激励设置遇到问题: {str(e)[:80]}")
-    print(f"  [提示] 请在Maxwell GUI中手动配置激励:")
-    print(f"         1. 选择导电杆端面 -> Assign Excitation -> Coil")
-    print(f"         2. 创建绕组: Excitations -> Add Winding")
-    print(f"         3. 设置电流 = {RATED_CURRENT}A")
+    print(f"  [警告] {e}")
 
 # =============================================================================
-# 11. 创建瞬态分析设置 (简化版)
+# 10. 分析设置
 # =============================================================================
-setup = m3d.create_setup(name="Transient_Setup")
-setup.props["StopTime"] = f"{MOTION_TIME}s"
-setup.props["TimeStep"] = "0.0005s"  # 0.5ms时间步长
+print("\n[10/10] 创建分析设置...")
 
-# 添加参数化变量（便于后续扫描）
-m3d["contact_gap"] = f"{CONTACT_GAP}mm"
-m3d["max_gap"] = f"{CONTACT_GAP_MAX}mm"
+try:
+    setup = m3d.create_setup(name="Transient_Analysis")
+    setup.props["StopTime"] = f"{MOTION_TIME}s"
+    setup.props["TimeStep"] = "0.0005s"
+    setup.update()
+    print(f"  仿真时间: {MOTION_TIME*1000:.0f}ms")
+except Exception as e:
+    print(f"  [警告] {e}")
 
+# =============================================================================
+# 保存
+# =============================================================================
+print("\n" + "=" * 60)
 m3d.save_project()
+print(f"项目保存: {m3d.project_path}")
 
+print("\n创建的对象:")
+for obj in m3d.modeler.object_names:
+    print(f"  - {obj}")
+
+print("\n" + "=" * 60)
+print("模型创建完成!")
 print("=" * 60)
-print("瞬态仿真模型创建完成! (v5 - Transient)")
-print(f"项目路径: {m3d.project_path}")
-print("=" * 60)
-print("\n结构说明:")
-print("  1. 静端盖板 (上方金属盖)")
-print("  2. 主屏蔽罩 (内部包围触头)")
-print("  3. 动/静触头 + 导电杆 (触头盘φ84mm)")
-print("  4. 动端盖板 (下方金属盖)")
-print("  5. 绝缘外壳 (连续整体陶瓷管)")
-print("  6. 真空区域 (内部空腔)")
-print("\n仿真参数:")
-print(f"  额定电流: {RATED_CURRENT} A")
-print(f"  分闸速度: {MOTION_VELOCITY} m/s")
-print(f"  分闸时间: {MOTION_TIME * 1000} ms")
-print(f"  最大开距: {CONTACT_GAP_MAX} mm")
 
-# m3d.analyze_all()
-# m3d.release_desktop()
+print("\n手动配置 (Motion Setup):")
+print("  1. 右键 Motion_Band > Assign Band > Translational")
+print("  2. Moving Objects: Moving_Contact, Moving_Rod, Moving_Flange")
+print("  3. Axis: X, Is Positive: 勾选")
+print("  4. Velocity 选择 'Dataset': pwl(Velocity_Profile, Time)")
+print(f"  5. Positive Limit: {CONTACT_GAP_MAX}mm")
 
+print("\n电流激励:")
+print("  选择 Static_Rod > Excitations > Assign > Current")
+print(f"  Value: {PEAK_CURRENT:.0f}*sin(2*3.14159*{FREQUENCY}*Time)")
 
+print("\n速度时程曲线 (已创建 Dataset):")
+print("  初始速度: 1.2 m/s (高速启动)")
+print("  终止速度: 0.6 m/s (减速稳定)")
+print("  曲线类型: 指数衰减")

@@ -11,7 +11,7 @@
   header: align(right)[_KYN28A-12 开关柜抗震性能分析报告_],
   footer: context [#align(center)[第 #counter(page).display() 页，共 #counter(page).final().at(0) 页]]
 )
-#set text(font: ("SimSun", "Microsoft YaHei", "Noto Serif CJK SC"), size: 10.5pt, lang: "zh")
+#set text(font: ("SimSun", "Microsoft YaHei"), size: 10.5pt, lang: "zh")
 #set heading(numbering: "1.1.1")
 #show heading.where(level: 1): set block(above: 1.5em, below: 1em)
 #show heading.where(level: 2): set block(above: 1.5em, below: 1em)
@@ -314,8 +314,8 @@
 
 #figure(
   grid(columns: 2, gutter: 12pt,
-    image("field_plots/seismic/CopperSeismic1.png", width: 100%),
-    image("field_plots/seismic/CopperSeismic2.png", width: 100%),
+    image("../field_plots/SeismicAnalysis/CopperSeismic1.png", width: 100%),
+    image("../field_plots/SeismicAnalysis/CopperSeismic2.png", width: 100%),
   ),
   caption: [等效应力云图（左：整体视图，右：局部放大）]
 )
@@ -357,8 +357,8 @@
 
 #figure(
   grid(columns: 2, gutter: 12pt,
-    image("field_plots/seismic/CopperSeismic3.png", width: 100%),
-    image("field_plots/seismic/CopperSeismic4.png", width: 100%),
+    image("../field_plots/SeismicAnalysis/CopperSeismic3.png", width: 100%),
+    image("../field_plots/SeismicAnalysis/CopperSeismic4.png", width: 100%),
   ),
   caption: [位移云图（左：总变形，右：X方向变形）]
 )
@@ -406,8 +406,8 @@
 
 #figure(
   grid(columns: 2, gutter: 12pt,
-    image("field_plots/seismic/HandcartSeismic1.png", width: 100%),
-    image("field_plots/seismic/HandcartSeismic2.png", width: 100%),
+    image("../field_plots/SeismicAnalysis/HandcartSeismic1.png", width: 100%),
+    image("../field_plots/SeismicAnalysis/HandcartSeismic2.png", width: 100%),
   ),
   caption: [模态振型云图（左：一阶模态，右：二阶模态）]
 )
@@ -448,8 +448,8 @@
 
 #figure(
   grid(columns: 2, gutter: 12pt,
-    image("field_plots/seismic/HandcartSeismic3.png", width: 100%),
-    image("field_plots/seismic/HandcartSeismic4.png", width: 100%),
+    image("../field_plots/SeismicAnalysis/HandcartSeismic3.png", width: 100%),
+    image("../field_plots/SeismicAnalysis/HandcartSeismic4.png", width: 100%),
   ),
   caption: [关键部位应力分布（左：框架节点，右：底座区域）]
 )
@@ -612,15 +612,3 @@
     ]
   ]
 )
-
-#v(2cm)
-
-#align(right)[
-  编制人签字：#underline[#h(5cm)]
-  
-  审核人签字：#underline[#h(5cm)]
-  
-  批准人签字：#underline[#h(5cm)]
-  
-  日#h(4em)期：#underline[#h(5cm)]
-]
