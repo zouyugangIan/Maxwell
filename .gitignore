@@ -6,6 +6,10 @@ asset/*.SAT
 seismicResults/
 simplifiedDrawings/
 
+# Typst binary (downloaded)
+typst.tar.xz
+typst-x86_64-unknown-linux-musl/
+
 # Maxwell/Ansys temporary files
 *.lock
 *.auto

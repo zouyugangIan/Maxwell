@@ -9,7 +9,7 @@
   header: align(right)[_KYN28 开关柜涡流损耗分析报告_],
   footer: context [#align(center)[第 #counter(page).display() 页，共 #counter(page).final().at(0) 页]]
 )
-#set text(font: ("Noto Serif CJK SC", "Noto Sans CJK SC"), size: 10.5pt, lang: "zh")
+#set text(font: ("SimSun", "Microsoft YaHei"), size: 10.5pt, lang: "zh")
 #set heading(numbering: "1.1.1")
 #set par(first-line-indent: 2em, justify: true, leading: 1.5em)
 #show heading.where(level: 1): set block(above: 1.5em, below: 1em)
@@ -26,7 +26,7 @@
   #v(1.5cm)
   #text(size: 22pt, weight: "bold")[开关柜金属隔板涡流损耗仿真分析报告]
   #v(0.4cm)
-  #text(size: 14pt, weight: "bold")[KYN28-12/4000A 型高压开关柜 · Maxwell 涡流场仿真]
+  #text(size: 14pt, weight: "bold")[涡流场仿真 (Eddy Current)]
   #v(1cm)
   #line(length: 50%, stroke: 0.5pt)
   #v(0.8cm)
@@ -36,7 +36,6 @@
     row-gutter: 10pt,
     align: (right, left),
     [*分析类型：*], [涡流场仿真 (Eddy Current)],
-    [*报告日期：*], [#underline[#h(3em)]年#underline[#h(2.5em)]月#underline[#h(2.5em)]日],
   )
   #v(1.5cm)
 ]
@@ -154,8 +153,8 @@ $ delta = sqrt(1 / (pi f mu sigma)) = sqrt(1 / (pi f mu_0 mu_r sigma)) $
     fill: (_, row) => if row == 0 { header-blue } else if row == 1 { rgb("#e6f3ff") } else if calc.odd(row) { white } else { alt-gray },
     align: (left, center, center),
     [#th[项目]], [#th[损耗值 (W)]], [#th[占比]],
-    [*总涡流损耗*], [*1199.35*], [*100%*],
-    [隔离板 (Plate_Frame)], [1199.35], [100.0%],
+    [*总涡流损耗*], [*144.02*], [*100%*],
+    [隔离板 (Plate_Frame)], [144.02], [100.0%],
     [母排 A (Busbar_A)], [0.00], [＜1%],
     [母排 B (Busbar_B)], [0.00], [＜1%],
     [母排 C (Busbar_C)], [0.00], [＜1%],
@@ -174,14 +173,14 @@ $ delta = sqrt(1 / (pi f mu sigma)) = sqrt(1 / (pi f mu_0 mu_r sigma)) $
     fill: (_, row) => if row == 0 { header-blue } else if calc.odd(row) { white } else { alt-gray },
     align: (left, center, center, center),
     [#th[隔板材料]], [#th[μr]], [#th[隔板损耗 (W)]], [#th[备注]],
-    [覆铝锌板(结构钢,铁磁材料)], [4000], [1199.35], [原方案],
-    [不锈钢板(非铁磁材料)], [1], [24.6701], [优化方案],
+    [覆铝锌板(结构钢,铁磁材料)], [4000], [144.02], [原方案],
+    [不锈钢板(非铁磁材料)], [1], [0.018], [优化方案],
   ),
   caption: [不同隔板材料涡流损耗对比]
 )
 
 #block(fill: rgb("#e8f5e9"), inset: 10pt, radius: 4pt, width: 100%)[
-  *关键发现*：采用非铁磁材料（不锈钢，μr≈1）替代覆铝锌板（铁磁钢板，μr≈4000）后，隔板涡流损耗从 *1199.35 W* 降至 *24.6701 W*，降幅达 *97.94%*。
+  *关键发现*：采用非铁磁材料（不锈钢，μr≈1）替代覆铝锌板（铁磁钢板，μr≈4000）后，隔板涡流损耗从 *144.02 W* 降至 *0.018 W*，降幅达 *99.99%*。
 ]
 
 
@@ -191,8 +190,8 @@ $ delta = sqrt(1 / (pi f mu sigma)) = sqrt(1 / (pi f mu_0 mu_r sigma)) $
 
 #figure(
   grid(columns: 2, gutter: 16pt,
-    image("field_plots/Galvalume/Mag_B.png", width: 100%),
-    image("field_plots/Galvalume/ohmicLoss.png", width: 100%),
+    image("../field_plots/EddyCurrentAnalysis/Galvalume/Mag_B.png", width: 100%),
+    image("../field_plots/EddyCurrentAnalysis/Galvalume/ohmicLoss.png", width: 100%),
   ),
   caption: [覆铝锌板隔板方案场分布（左：磁通密度 Mag_B，右：欧姆损耗 OhmicLoss）]
 )
@@ -201,8 +200,8 @@ $ delta = sqrt(1 / (pi f mu sigma)) = sqrt(1 / (pi f mu_0 mu_r sigma)) $
 
 #figure(
   grid(columns: 2, gutter: 16pt,
-    image("field_plots/Stainless/Mag_B.png", width: 100%),
-    image("field_plots/Stainless/ohmicLoss.png", width: 100%),
+    image("../field_plots/EddyCurrentAnalysis/Stainless/Mag_B.png", width: 100%),
+    image("../field_plots/EddyCurrentAnalysis/Stainless/ohmicLoss.png", width: 100%),
   ),
   caption: [不锈钢隔板方案场分布（左：磁通密度 Mag_B，右：欧姆损耗 OhmicLoss）]
 )
@@ -243,16 +242,16 @@ $ delta = sqrt(1 / (pi f mu sigma)) = sqrt(1 / (pi f mu_0 mu_r sigma)) $
     fill: (_, row) => if row == 0 { header-blue } else if calc.odd(row) { white } else { alt-gray },
     align: center + horizon,
     [#th[参数]], [#th[覆铝锌板]], [#th[不锈钢板]],
-    [隔板涡流损耗功率], [1199.35 W], [24.6701 W],
-    [等效发热量 (1小时)], [4317.7 kJ], [88.81 kJ],
+    [隔板涡流损耗功率], [144.02 W], [0.018 W],
+    [等效发热量 (1小时)], [518.5 kJ], [0.065 kJ],
   ),
   caption: [损耗与发热对比]
 )
 
 == 热设计建议
 
-+ *材料替换*：采用不锈钢（304/316）等非铁磁材料替代覆铝锌板/钢板，可有效降低涡流损耗达 97.9%
-+ *通风散热*：覆铝锌板隔板产生的涡流损耗约 1199 W，需考虑增加通风散热措施
++ *材料替换*：采用不锈钢（304/316）等非铁磁材料替代覆铝锌板/钢板，可有效降低涡流损耗达 99.99%
++ *通风散热*：覆铝锌板隔板产生的涡流损耗约 144 W，需考虑增加通风散热措施
 + *过孔优化*：适当加大过孔尺寸可减少孔洞边缘的磁通集中，降低局部损耗密度
 + *温度场仿真*：
   - 不锈钢隔板方案：涡流损耗可忽略不计，温升主要由铜排焦耳热决定
@@ -262,8 +261,8 @@ $ delta = sqrt(1 / (pi f mu sigma)) = sqrt(1 / (pi f mu_0 mu_r sigma)) $
 
 根据本次仿真分析，主要结论如下：
 
-+ 在 4000 A、50 Hz 工况下，采用覆铝锌板（铁磁钢板）作为隔板，涡流损耗功率约 *1199.35 W*
-+ 采用不锈钢板（非铁磁材料）作为隔板，涡流损耗功率仅 *24.67 W*，降幅达 *97.94%*
++ 在 4000 A、50 Hz 工况下，采用覆铝锌板（铁磁钢板）作为隔板，涡流损耗功率约 *144.02 W*
++ 采用不锈钢板（非铁磁材料）作为隔板，涡流损耗功率仅 *0.018 W*，降幅达 *99.99%*
 + 涡流损耗主要发生在隔板上，损耗集中在孔洞边缘区域，与理论分析一致
 + 铁磁材料（覆铝锌板/钢板）对磁场具有明显增强作用，大幅增加涡流损耗
 + *建议*：采用非铁磁材料（304/316不锈钢）作为金属隔板材料，可有效限制涡流损耗，是优化开关柜热设计的有效手段
@@ -274,16 +273,14 @@ $ delta = sqrt(1 / (pi f mu sigma)) = sqrt(1 / (pi f mu_0 mu_r sigma)) $
   columns: (1fr, 1fr),
   [
     #text(size: 9pt, fill: gray)[
-      *仿真工具*：ANSYS Maxwell 2022 R2 \
+      *仿真工具*：ANSYS Maxwell 2024 R1 \
       *仿真类型*：涡流场 (Eddy Current) \
-      *求解频率*：50 Hz
     ]
   ],
   [
     #align(right)[
       #text(size: 9pt, fill: gray)[
         *报告日期*：#underline[#h(2em)]年#underline[#h(1em)]月#underline[#h(1em)]日 \
-        *版本*：v1.0
       ]
     ]
   ]
