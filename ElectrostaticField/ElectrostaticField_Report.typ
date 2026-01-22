@@ -8,7 +8,7 @@
   header: align(right)[_KYN28 开关柜电场分析报告_],
   footer: context [#align(center)[第 #counter(page).display() 页，共 #counter(page).final().at(0) 页]]
 )
-#set text(font: ("Noto Serif CJK SC", "Noto Sans CJK SC"), size: 10.5pt, lang: "zh")
+#set text(font: ("SimSun", "Microsoft YaHei"), size: 10.5pt, lang: "zh")
 #set heading(numbering: "1.1.1")
 #set par(first-line-indent: 2em, justify: true, leading: 1.5em)
 #show heading.where(level: 1): set block(above: 1.5em, below: 1em)
@@ -25,7 +25,7 @@
   #v(1.5cm)
   #text(size: 22pt, weight: "bold")[开关柜电场仿真分析报告]
   #v(0.4cm)
-  #text(size: 14pt, weight: "bold")[KYN28-12 型高压开关柜 · Maxwell 静电场仿真]
+  #text(size: 14pt, weight: "bold")[静电场仿真 (Electrostatic)]
   #v(1cm)
   #line(length: 50%, stroke: 0.5pt)
   #v(0.8cm)
@@ -34,9 +34,7 @@
     columns: (6em, auto),
     row-gutter: 10pt,
     align: (right, left),
-    [*报告编号：*], [ES-KYN28-001],
     [*分析类型：*], [静电场仿真 (Electrostatic)],
-    [*报告日期：*], [#underline[#h(3em)]年#underline[#h(2.5em)]月#underline[#h(2.5em)]日],
   )
   #v(1.5cm)
 ]
@@ -80,7 +78,6 @@
     [额定电流], [1250], [A],
     [相间距离], [160], [mm],
     [对地距离], [125], [mm],
-    [柜体尺寸 (宽×深×高)], [800×1500×2300], [mm],
   ),
   caption: [1250A 进线柜基本参数]
 )
@@ -101,7 +98,6 @@
     [额定电流], [4000], [A],
     [相间距离], [160], [mm],
     [对地距离], [125], [mm],
-    [柜体尺寸 (宽×深×高)], [1000×1500×2300], [mm],
   ),
   caption: [4000A 出线柜基本参数]
 )
@@ -146,7 +142,7 @@
 == 边界条件与激励
 
 #block(fill: rgb("#fff8e1"), inset: 10pt, radius: 4pt, width: 100%)[
-  *说明*：电压激励采用工频 50 Hz 时最不利状态（A相电压达峰值时刻），此时相间电压差最大，电场强度最大。12 kV 系统线电压有效值对应的峰值电压为 $12 times sqrt(2) / sqrt(3) approx 9.8$ kV。
+  *说明*：电压激励采用工频耐压试验条件，将所有载流导体表面施加峰值电压 59.5 kV（工频耐受电压 $42 "kV" times sqrt(2) approx 59.5 "kV"$），接地部件电势为 0V。此工况模拟出厂工频耐压试验的最大电场应力状态。
 ]
 
 = 理论分析
@@ -292,8 +288,9 @@
 )
 
 从电场分布云图可以看出：
-- 最大电场强度约为 8.813×10⁶ V/m（8.81 kV/mm）
-- 4000A 出线柜的最大场强低于 1250A 进线柜，绝缘裕度更大
+- 最大电场强度约为 8.813×10⁶ V/m（8.81 kV/mm），出现在几何尖角等奇异点
+- 色标范围设置为 0～2.5×10⁶ V/m（2.5 kV/mm），便于观察主要区域的场强分布
+- 大部分区域电场强度在安全范围内（蓝色区域，< 1 kV/mm）
 
 == 电场强度关键区域分析
 
@@ -365,7 +362,7 @@
     [相间电气间隙], [场强 ≤ 0.92 kV/mm], [≤ 1.5 kV/mm], [合格 ✓],
     [对地电气间隙], [场强 ≤ 0.52 kV/mm], [≤ 1.5 kV/mm], [合格 ✓],
     [触头间隙], [场强 ≤ 1.74 kV/mm], [≤ 3.0 kV/mm], [合格 ✓],
-    [母排边缘], [场强 1.25 kV/mm], [≤ 1.5 kV/mm], [需关注 ⚠],
+    [母排边缘], [场强 1.25 kV/mm], [≤ 1.5 kV/mm], [合格 ✓],
     [绝缘子表面], [场强 ≤ 0.45 kV/mm], [≤ 1.0 kV/mm], [合格 ✓],
   ),
   caption: [绝缘设计评估结果]
@@ -433,16 +430,14 @@
   columns: (1fr, 1fr),
   [
     #text(size: 9pt, fill: gray)[
-      *仿真工具*：ANSYS Maxwell 2024 R2 \
+      *仿真工具*：ANSYS Maxwell 2024 R1 \
       *仿真类型*：静电场 (Electrostatic) \
-      *激励条件*：工频耐压试验电压（59.4 kV 峰值）
     ]
   ],
   [
     #align(right)[
       #text(size: 9pt, fill: gray)[
         *报告日期*：#underline[#h(2em)]年#underline[#h(1em)]月#underline[#h(1em)]日 \
-        *版本*：v2.0
       ]
     ]
   ]
