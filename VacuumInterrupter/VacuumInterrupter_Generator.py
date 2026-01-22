@@ -16,13 +16,16 @@ Date: 2026-01-19
 """
 
 import os
+# 修正 Ansys 安装路径 (如果盘符发生了变化)
+os.environ["ANSYSEM_ROOT242"] = r"K:\Ansys2024R2\v242\Win64"
+
 from pyaedt import settings
 settings.use_grpc_api = False
 
 from pyaedt import Maxwell3d
 
 # =============================================================================
-# 参数设置 - 参考知乎文章结构
+# 参数设置
 # =============================================================================
 # 单位: mm
 # 建模方向: X轴 (静端在-X, 动端在+X)
@@ -331,14 +334,21 @@ band_x_start = max(band_x_start, STATIC_CONTACT_X + CONTACT_THICKNESS + 2)
 band_length = band_x_end - band_x_start
 band_radius = CONTACT_RADIUS + 3  # 略大于触头
 
-motion_band = m3d.modeler.create_cylinder(
-    orientation="X",
-    origin=[band_x_start, 0, 0],
+# 使用 36 边多棱柱模拟圆柱 (满足 Motion Band 平面要求，且逼近圆形)
+# 1. 创建底面正多边形 (YZ平面)
+motion_band = m3d.modeler.create_regular_polygon(
+    position=[band_x_start, 0, 0],
     radius=band_radius,
-    height=band_length,
-    name="Motion_Band",
-    material="vacuum"
+    num_sides=36,
+    plane="YZ",
+    name="Motion_Band"
 )
+
+# 2. 沿 X 轴拉伸成实体
+m3d.modeler.sweep_along_vector(motion_band, [band_length, 0, 0])
+
+# 3. 设置材质
+motion_band.material_name = "vacuum"
 
 print(f"  X范围: {band_x_start:.1f}mm ~ {band_x_end:.1f}mm")
 print(f"  静触头右端面: X={STATIC_CONTACT_X + CONTACT_THICKNESS:.1f}mm")
