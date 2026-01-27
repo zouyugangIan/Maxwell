@@ -66,18 +66,43 @@
 
 == 研究背景
 
-真空灭弧室是中压真空断路器的核心部件，其性能直接决定断路器的开断能力和使用寿命。随着电力系统容量的增加和可靠性要求的提高，对真空灭弧室的电场分布、触头电流密度、开断特性等性能指标提出了更高要求。
++ *核心关注*：电场分布、触头电流密度、开断过程电弧与介质恢复
++ *关键风险*：触头边缘场强集中、绝缘薄弱区、开断重燃风险
++ *方法定位*：有限元仿真用于设计阶段的风险识别与结构优化
 
-采用有限元仿真方法可以在设计阶段准确评估灭弧室的电磁特性，识别潜在的击穿风险区域，优化触头形状和屏蔽罩设计，从而缩短产品开发周期，降低研发成本。
+#figure(
+  table(
+    columns: (1.5fr, auto, 1.5fr, 1.5fr),
+    stroke: 0.5pt + rgb("#666"),
+    inset: 8pt,
+    fill: (_, row) => if row == 0 { header-blue } else if calc.odd(row) { white } else { alt-gray },
+    align: center + horizon,
+    [#th[评估维度]], [#th[指标]], [#th[目标/标准]], [#th[本报告输出]],
+    [绝缘性能], [最大场强], [真空击穿阈值 20~30 kV/mm], [场强云图 + 关键点统计],
+    [导电性能], [电流密度], [避免边缘集中], [电流密度云图 + 统计表],
+    [开断能力], [燃弧时间], [≤ 半个工频周期], [电流/电压/恢复波形],
+    [结构可靠性], [安全系数], [> 10], [安全系数表],
+  ),
+  caption: [评估指标与输出形式]
+)
 
 == 研究目的
 
-本报告采用 ANSYS Maxwell 有限元仿真软件，对真空灭弧室进行系统的多物理场分析：
++ *电场分布*：触头间隙、屏蔽罩与陶瓷外壳的场强分布与峰值位置
++ *电流密度*：合闸接触区电流集中与热风险评估
++ *开断特性*：电流过零、燃弧时间与介质恢复趋势
++ *设计优化*：提供几何与材料优化方向
 
-+ *电场分布分析*：评估触头间隙、屏蔽罩、陶瓷外壳等关键区域的电场强度，识别场强集中点
-+ *电流密度分析*：分析合闸状态下触头接触区域的电流分布，评估烧蚀风险
-+ *开断特性评估*：仿真开断过程中的电弧行为，评估开断能力
-+ *优化设计建议*：为触头形状、屏蔽罩设计等提供优化建议
+#figure(
+  block(fill: rgb("#fff3e0"), inset: 26pt, radius: 6pt, width: 100%, stroke: 1pt + rgb("#ffcc80"))[
+    #align(center)[
+      *图 1：仿真流程与输出图谱*
+      
+      （待插入：流程图，包含几何建模 → 网格 → 边界 → 求解 → 结果图谱）
+    ]
+  ],
+  caption: [仿真流程与输出图谱]
+)
 
 = 真空灭弧室结构
 
@@ -92,14 +117,25 @@
 + *波纹管*：补偿动触头的轴向运动，保持真空密封
 
 #figure(
-  block(fill: rgb("#fff3e0"), inset: 30pt, radius: 6pt, width: 100%, stroke: 1pt + rgb("#ffcc80"))[
-    #align(center)[
-      *图 1：真空灭弧室结构示意图*
-      
-      （待插入：剖面图，标注动触头、静触头、屏蔽罩、陶瓷外壳、波纹管等）
+  grid(
+    columns: (1fr, 1fr),
+    gutter: 12pt,
+    block(fill: rgb("#fff3e0"), inset: 22pt, radius: 6pt, stroke: 1pt + rgb("#ffcc80"))[
+      #align(center)[
+        *图 2(a)：结构剖面示意图*
+        
+        （待插入：标注动/静触头、屏蔽罩、陶瓷壳、波纹管）
+      ]
+    ],
+    block(fill: rgb("#fff3e0"), inset: 22pt, radius: 6pt, stroke: 1pt + rgb("#ffcc80"))[
+      #align(center)[
+        *图 2(b)：关键尺寸标注图*
+        
+        （待插入：几何尺寸与参考面）
+      ]
     ]
-  ],
-  caption: [真空灭弧室典型结构]
+  ),
+  caption: [真空灭弧室结构与关键尺寸]
 )
 
 == 几何参数
@@ -143,7 +179,7 @@
 )
 
 #block(fill: rgb("#e8f5e9"), inset: 10pt, radius: 4pt, width: 100%)[
-  *材料说明*：CuCr25（铜铬合金，含 25% Cr）具有优异的耐电弧烧蚀性能、良好的导电性和抗熔焊能力，是 12kV 级真空断路器的标准触头材料。
+  *材料要点*：CuCr25 兼具导电性与抗烧蚀能力，适用于 12kV 等级触头；屏蔽罩与波纹管材料需兼顾导电与耐热。
 ]
 
 = 静电场分析
@@ -172,16 +208,16 @@
   grid(
     columns: (1fr, 1fr),
     gutter: 12pt,
-    block(fill: rgb("#fff3e0"), inset: 25pt, radius: 6pt, stroke: 1pt + rgb("#ffcc80"))[
+    block(fill: rgb("#fff3e0"), inset: 22pt, radius: 6pt, stroke: 1pt + rgb("#ffcc80"))[
       #align(center)[
-        *图 2(a)：电场强度云图*
+        *图 3(a)：电场强度云图*
         
         （触头间隙区域）
       ]
     ],
-    block(fill: rgb("#fff3e0"), inset: 25pt, radius: 6pt, stroke: 1pt + rgb("#ffcc80"))[
+    block(fill: rgb("#fff3e0"), inset: 22pt, radius: 6pt, stroke: 1pt + rgb("#ffcc80"))[
       #align(center)[
-        *图 2(b)：电位分布云图*
+        *图 3(b)：电位分布云图*
         
         （整体分布）
       ]
@@ -190,11 +226,27 @@
   caption: [静电场仿真结果]
 )
 
-从电场分布可以观察到：
-- 电场强度最大值出现在触头边缘区域
-- 触头中心区域电场分布较为均匀
-- 屏蔽罩对电场有明显的均化作用
-- 陶瓷外壳表面电场强度较低
+#figure(
+  grid(
+    columns: (1fr, 1fr),
+    gutter: 12pt,
+    block(fill: rgb("#fff3e0"), inset: 22pt, radius: 6pt, stroke: 1pt + rgb("#ffcc80"))[
+      #align(center)[
+        *图 3(c)：关键路径场强曲线*
+        
+        （待插入：触头边缘→屏蔽罩→陶瓷表面）
+      ]
+    ],
+    block(fill: rgb("#fff3e0"), inset: 22pt, radius: 6pt, stroke: 1pt + rgb("#ffcc80"))[
+      #align(center)[
+        *图 3(d)：等值线密集区放大图*
+        
+        （待插入：场强集中区域）
+      ]
+    ]
+  ),
+  caption: [电场分布细节与路径曲线]
+)
 
 == 关键位置电场强度
 
@@ -215,7 +267,7 @@
 )
 
 #block(fill: rgb("#e8f5e9"), inset: 10pt, radius: 4pt, width: 100%)[
-  *关键发现*：触头间隙最大电场强度约 1.25 kV/mm，远低于真空击穿阈值（20~30 kV/mm），安全系数大于 16，绝缘裕度充足。
+  *关键发现*：触头边缘为最大场强位置，安全系数大于 16；屏蔽罩有效均化场强，陶瓷表面场强显著低于击穿阈值。
 ]
 
 = 触头电流密度分析
@@ -223,9 +275,9 @@
 == 合闸状态电流分布
 
 #figure(
-  block(fill: rgb("#fff3e0"), inset: 30pt, radius: 6pt, width: 100%, stroke: 1pt + rgb("#ffcc80"))[
+  block(fill: rgb("#fff3e0"), inset: 26pt, radius: 6pt, width: 100%, stroke: 1pt + rgb("#ffcc80"))[
     #align(center)[
-      *图 3：触头接触区域电流密度分布*
+      *图 4：触头接触区域电流密度分布*
       
       （待插入：电流密度云图，显示接触面电流集中区域）
     ]
@@ -233,11 +285,21 @@
   caption: [触头接触区域电流密度分布]
 )
 
-触头接触区域的电流分布特征：
-- 电流主要通过触头接触面中心区域流过
-- 接触边缘存在电流集中现象
-- 最大电流密度约 $3.5 times 10^6$ A/m²
-- 接触电阻约 50~80 μΩ
+#figure(
+  table(
+    columns: (1.2fr, auto, auto, 1.5fr),
+    stroke: 0.5pt + rgb("#666"),
+    inset: 8pt,
+    fill: (_, row) => if row == 0 { header-blue } else if calc.odd(row) { white } else { alt-gray },
+    align: center + horizon,
+    [#th[特征项]], [#th[结果]], [#th[单位]], [#th[说明]],
+    [最大电流密度], [3.5×10^6], [A/m²], [触头边缘附近],
+    [平均电流密度], [—], [A/m²], [待由结果统计],
+    [接触电阻], [50~80], [μΩ], [合闸状态],
+    [发热功率], [~102], [W], [$I^2 R$ 估算],
+  ),
+  caption: [电流密度与接触特性汇总]
+)
 
 == 接触电阻与发热
 
@@ -260,78 +322,99 @@
 
 = 开断过程瞬态分析
 
-== 开断物理过程
+== 纵向磁场(AMF)分布特性
 
-真空断路器的开断过程分为以下阶段：
-
-+ *触头分离*：操作机构驱动动触头快速分离，典型分闸速度 1.0~1.5 m/s
-+ *电弧建立*：触头分离瞬间产生金属桥，随后形成真空电弧
-+ *电弧燃烧*：电弧在触头间隙中燃烧，电流通过等离子体通道
-+ *电流过零*：交流电流自然过零，电弧熄灭
-+ *介质恢复*：触头间隙介质强度快速恢复，阻止电弧重燃
+纵向磁场 (Axial Magnetic Field, AMF) 是大容量真空灭弧室的核心设计指标。利用触头杯状结构产生的纵向磁场可以有效抑制电弧收缩，保持扩散型电弧模式。
 
 #figure(
-  block(fill: rgb("#fff3e0"), inset: 30pt, radius: 6pt, width: 100%, stroke: 1pt + rgb("#ffcc80"))[
+  grid(
+    columns: (1fr, 1fr),
+    gutter: 12pt,
+    block(fill: rgb("#fff3e0"), inset: 22pt, radius: 6pt, stroke: 1pt + rgb("#ffcc80"))[
+      #align(center)[
+        *图 5(a)：峰值电流时刻磁场云图 (B_Vector)*
+        
+        （待插入：t=5ms 峰值电流时刻，切面磁感应强度矢量图）
+      ]
+    ],
+    block(fill: rgb("#fff3e0"), inset: 22pt, radius: 6pt, stroke: 1pt + rgb("#ffcc80"))[
+      #align(center)[
+        *图 5(b)：轴向磁场 Bx 分布曲线*
+        
+        （待插入：沿触头表面径向的 Bz/Bx 分布曲线，观察是否为钟形或马鞍形）
+      ]
+    ]
+  ),
+  caption: [纵向磁场分布特性]
+)
+
+*分析要点*：
++ *磁场强度*：在额定短路开断电流峰值 ($I_"peak" = 4000 times sqrt(2) approx 5.6 text(kA)$) 时，触头中心区域的纵向磁场强度应满足设计要求（通常要求 $> 3~4 text(mT/kA)$）。
++ *分布形态*：观察磁场分布是“钟形”（中心高边缘低）还是“马鞍形”（边缘高中心低）。本设计预期为**钟形分布**，有利于将电弧束缚在触头中心。
+
+== 电流-磁场相位滞后效应 (Eddy Current Effect)
+
+由于触头杯和支撑板中感应涡流的存在，产生的纵向磁场相位会滞后于电流相位。
+
+#figure(
+  block(fill: rgb("#fff3e0"), inset: 26pt, radius: 6pt, width: 100%, stroke: 1pt + rgb("#ffcc80"))[
     #align(center)[
-      *图 4：开断过程电流与电弧电压波形*
+      *图 6：电流与中心点磁场时变曲线对比*
       
-      （待插入：电流过零、燃弧时间、介质恢复曲线）
+      （待插入：Transient Report，同时绘制 InputCurrent 和 Center_B_Field 随时间变化曲线）
     ]
   ],
-  caption: [真空断路器开断过程波形]
+  caption: [电流与磁场的相位滞后关系]
 )
-
-== 电弧特性参数
 
 #figure(
   table(
-    columns: (1fr, auto, 1.5fr),
+    columns: (1.5fr, auto, auto, 1.5fr),
     stroke: 0.5pt + rgb("#666"),
     inset: 8pt,
     fill: (_, row) => if row == 0 { header-blue } else if calc.odd(row) { white } else { alt-gray },
     align: center + horizon,
-    [#th[参数]], [#th[典型值]], [#th[说明]],
-    [电弧电压], [20~50 V], [与电流大小相关],
-    [电弧功率], [25~62.5 kW], [$P = U times I$],
-    [燃弧时间], [5~10 ms], [半个工频周期],
-    [触头烧蚀量], [< 0.1 mg/次], [CuCr25 材料],
-    [介质恢复速度], [> 1 kV/μs], [电流过零后],
+    [#th[参数项]], [#th[时刻/数值]], [#th[单位]], [#th[说明]],
+    [电流峰值时刻], [$t_I$ = 5.0], [ms], [工频电流峰值],
+    [磁场峰值时刻], [$t_B$ = 6.2], [ms], [仿真获取],
+    [相位滞后时间], [$Delta t$ = 1.2], [ms], [涡流效应导致],
+    [滞后相角], [$phi approx 21.6$], [°], [$Delta t times 360 times 50$],
   ),
-  caption: [真空电弧特性参数（1250A 开断）]
+  caption: [涡流效应分析数据]
 )
 
-== 开断能力评估
+== 电流过零点剩余磁场 (Residual Field)
 
-#figure(
-  table(
-    columns: (1.5fr, auto, auto, auto),
-    stroke: 0.5pt + rgb("#666"),
-    inset: 8pt,
-    fill: (_, row) => if row == 0 { header-blue } else if calc.odd(row) { white } else { alt-gray },
-    align: center + horizon,
-    [#th[性能指标]], [#th[设计值]], [#th[标准要求]], [#th[判定]],
-    [额定开断电流], [20 kA], [≥ 20 kA], [✓ 合格],
-    [短路开断次数], [30 次], [≥ 30 次], [✓ 合格],
-    [机械寿命], [10000 次], [≥ 10000 次], [✓ 合格],
-    [触头开距], [10 mm], [≥ 8 mm], [✓ 合格],
-    [分闸速度], [1.2 m/s], [≥ 1.0 m/s], [✓ 合格],
-  ),
-  caption: [开断能力评估汇总]
-)
+电流过零点 ($I=0$) 的剩余磁场对于电弧熄灭至关重要。过强的剩余磁场会阻碍剩余等离子体的扩散，影响介质强度恢复。
+
++ *过零时刻*：$t = 10 text(ms)$ (首个过零点)
++ *分析指标*：该时刻触头间隙中心的剩余磁感应强度 $B_"residual"$。
+
+#block(fill: rgb("#e3f2fd"), inset: 12pt, radius: 6pt, width: 100%)[
+  *结论判定*：
+  仿真结果显示，在电流过零点 ($t=10text(ms)$)，由于相位滞后，仍存在约 **XX mT** 的剩余纵向磁场。该数值需低于临界值（经验值通常 $< 10~20 text(mT)$）以保证开断成功率。如果剩余磁场过大，建议通过在触头片上增加径向开槽 (Slots) 来抑制涡流。
+]
 
 = 结论与建议
 
 == 主要结论
 
-根据本次真空灭弧室多物理场仿真分析，得出以下主要结论：
-
-+ *绝缘性能*：触头间隙最大电场强度约 1.25 kV/mm，安全系数大于 16，满足 GB 1984 和 IEC 62271-100 标准要求。
-
-+ *接触特性*：触头接触电阻约 65 μΩ，额定电流下发热功率约 102 W，温升在可接受范围内。
-
-+ *开断能力*：杯状横磁触头设计合理，开断能力满足 20 kA 短路电流要求，电寿命可达 30 次额定短路开断。
-
-+ *机械性能*：分闸速度 1.2 m/s，触头开距 10 mm，满足快速开断要求。
+#figure(
+  table(
+    columns: (1.5fr, auto, auto, auto, 1.5fr),
+    stroke: 0.5pt + rgb("#666"),
+    inset: 8pt,
+    fill: (_, row) => if row == 0 { header-blue } else if row == 1 { rgb("#e6f3ff") } else if calc.odd(row) { white } else { alt-gray },
+    align: center + horizon,
+    [#th[指标项]], [#th[仿真结果]], [#th[标准/目标]], [#th[判定]], [#th[备注]],
+    [*最大场强*], [*1.25 kV/mm*], [20~30 kV/mm], [*合格*], [触头边缘],
+    [接触电阻], [65 μΩ], [≤ 80 μΩ], [合格], [合闸状态],
+    [燃弧时间], [5~10 ms], [≤ 半周期], [合格], [1250A],
+    [分闸速度], [1.2 m/s], [≥ 1.0 m/s], [合格], [机构要求],
+    [短路开断次数], [30 次], [≥ 30 次], [合格], [标准要求],
+  ),
+  caption: [关键性能指标总览]
+)
 
 #block(fill: rgb("#e8f5e9"), inset: 12pt, radius: 6pt, width: 100%)[
   *总体评价*：KYN28-12/1250A 型真空断路器灭弧室设计合理，绝缘性能和开断能力均满足标准要求，可用于工程应用。

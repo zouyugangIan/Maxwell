@@ -114,12 +114,12 @@
 
 == 网格划分
 
-结合仿真模型的外形特征，对母线及触头盒模型选择六面体网格划分方法，对手车导轨模型选择四面体网格划分方法，经优化调整后均得到了贴体程度良好的网格。母线及触头盒模型的网格尺寸为5mm，其中网格节点502798个，网格数量149620个。手车导轨模型的网格尺寸为5mm，其中网格节点211202个，网格数量116968个。网格质量均符合计算要求。
+结合仿真模型的外形特征，对母线及触头盒模型选择六面体网格划分方法，对手车导轨模型选择四面体网格划分方法，经优化调整后均得到了贴体程度良好的网格。母线及触头盒模型的网格尺寸为5mm，其中网格节点416846个，网格数量234315个。手车导轨模型的网格尺寸为5mm，其中网格节点75512个，网格数量39232个。网格质量均符合计算要求。
 
 #figure(
   grid(columns: 2, gutter: 12pt,
-    image("../field_plots/SeismicAnalysis/CopperSeismicMesh.png", height: 6cm),
-    image("../field_plots/SeismicAnalysis/HandcartSeismicMesh.png", height: 6cm),
+    image("../field_plots/SeismicAnalysis/CopperSeismicMesh.png", width: 100%, height: 6.5cm, fit: "stretch"),
+    image("../field_plots/SeismicAnalysis/HandcartSeismicMesh.png", width: 100%, height: 6.5cm, fit: "stretch"),
   ),
   caption: [网格剖分情况（左：母线及触头盒模型网格，右：手车导轨模型网格）]
 )
@@ -193,6 +193,14 @@
 开关柜通过底座上的4个安装孔与基础地面采用螺栓连接固定。在有限元模型中，边界条件设置如下：
 
 #figure(
+  grid(columns: 2, gutter: 12pt,
+    image("../field_plots/SeismicAnalysis/CopperSeismicConstraint.png", width: 100%, height: 6.5cm, fit: "stretch"),
+    image("../field_plots/SeismicAnalysis/HandcartSeismicConstraint.png", width: 100%, height: 6.5cm, fit: "stretch"),
+  ),
+  caption: [约束位置示意图（左：母线与触头盒；右：手车导轨）]
+)
+
+#figure(
   table(
     columns: (auto, 1fr, 1.5fr),
     stroke: 0.5pt + rgb("#666666"),
@@ -200,7 +208,7 @@
     fill: (_, row) => if row == 0 { header-blue } else if calc.odd(row) { white } else { alt-gray },
     align: center + horizon,
     [#th[序号]], [#th[边界类型]], [#th[施加位置及说明]],
-    [1], [固定支撑], [柜体底座4个安装孔位置，约束全部6个自由度],
+    [1], [固定支撑], [手车导轨螺栓孔、穿墙套筒安装孔固定约束],
     [2], [重力载荷], [全局坐标系-Z方向，g=10 m/s²],
     [3], [水平地震加速度], [全局X方向（前后方向）],
     [4], [竖向地震加速度], [全局Z方向（垂直方向）],
@@ -208,7 +216,8 @@
   caption: [边界条件设置]
 )
 
-#block(fill: rgb("#e8f5e9"), inset: 10pt, radius: 4pt, width: 100%)[
+#pagebreak()
+#block(fill: rgb("#e8f5e9"), inset: 10pt, radius: 4pt, width: 100%, breakable: false)[
   *载荷组合原则*：
   - 采用静力等效法，将地震惯性力作为静载荷施加
   - 重力载荷与地震载荷同时作用，进行线性叠加
@@ -230,14 +239,14 @@ C相母线（最右端）加触头盒重量：m=19.46Kg，重力G=mg=19.46×9.8=
 
 == 手车导轨设置
 
-1250A断路器小车重量m=220kg，重力G=mg=220×9.8=2156N，受到加速力f=ma=220×7.8×9.8=16816.8N，故导轨所受合力F=mg+ma=18972.8N。左右导轨两边对称，右导轨受力为合力一半即为18972.8/2=9486.4N。
+断路器小车重量m=220kg，重力G=mg=220×9.8=2156N。受到加速力f=ma=220×7.8×9.8=16816.8N，故导轨所受合力F=mg+ma=18972.8N。左右导轨两边对称，右导轨受力为合力一半即为18972.8/2=9486.4N。
 
-断路器小车与导轨的接触方式为前后两条直线，每条直线加载荷为9486.4/2=4743.2N，加载荷的方式如图4所示，力A与力B之间直线距离为320mm，为手车的等效长度距离。
+断路器小车与导轨的接触方式为前后两条直线。每条直线加载荷为9486.4/2=4743.2N，加载荷的方式如图4所示，力A与力B之间直线距离为320mm，为手车的等效长度距离。
 
 #figure(
   grid(columns: 2, gutter: 12pt,
-    image("../field_plots/SeismicAnalysis/CopperSeismicLoad.png", height: 6cm),
-    image("../field_plots/SeismicAnalysis/HandcartSeismicLoad.png", height: 6cm),
+    image("../field_plots/SeismicAnalysis/CopperSeismicLoad.png", width: 100%, height: 6.5cm, fit: "stretch"),
+    image("../field_plots/SeismicAnalysis/HandcartSeismicLoad.png", width: 100%, height: 6.5cm, fit: "stretch"),
   ),
   caption: [载荷施加图示（左：母线及触头盒载荷，右：手车导轨载荷）]
 )
@@ -248,27 +257,47 @@ C相母线（最右端）加触头盒重量：m=19.46Kg，重力G=mg=19.46×9.8=
 
 === 母线及触头盒模型
 
-母线及触头盒模型的最大应力为93.65MPa，最大应力集中在最长分支母线C相转角处，应力分布如图5所示。在触头盒与螺栓固定处的应力最大值为44.92MPa，应力分布如图6所示。
+母线及触头盒模型的最大主应力为142.08MPa，主要集中在最长分支母线C相转角处，分布如图5所示；最大剪切应力为81.64MPa，集中在触头盒与螺栓接触及过渡区域，分布如图6所示。
 
 #figure(
   grid(columns: 2, gutter: 12pt,
-    image("../field_plots/SeismicAnalysis/CopperSeismic1.png", height: 6cm),
-    image("../field_plots/SeismicAnalysis/CopperSeismic2.png", height: 6cm),
+    image("../field_plots/SeismicAnalysis/CopperSeismic1.png", width: 100%, height: 6.5cm, fit: "stretch"),
+    image("../field_plots/SeismicAnalysis/CopperSeismic2.png", width: 100%, height: 6.5cm, fit: "stretch"),
   ),
-  caption: [母线及触头盒等效应力分布图（左：母线应力分布，右：触头盒与螺栓接触处应力）]
+  caption: [母线及触头盒应力分布图（左：最大主应力，右：最大剪切应力）]
 )
 
 === 手车导轨模型
 
-手车导轨的最大应力为148.69MPa，集中在力A的直线处，最大应变为0.3379mm，集中在力A的直线处及其上方的拐角处。
+手车导轨的最大主应力为175.73MPa，集中在力A的直线处，最大剪切应力为67.91MPa，集中在力A的直线处及其上方的拐角处。
 
 #figure(
   grid(columns: 2, gutter: 12pt,
-    image("../field_plots/SeismicAnalysis/HandcartSeismic1.png", height: 6cm),
-    image("../field_plots/SeismicAnalysis/HandcartSeismic2.png", height: 6cm),
+    image("../field_plots/SeismicAnalysis/HandcartSeismic1.png", width: 100%, height: 6.5cm, fit: "stretch"),
+    image("../field_plots/SeismicAnalysis/HandcartSeismic2.png", width: 100%, height: 6.5cm, fit: "stretch"),
   ),
-  caption: [手车导轨等效应力应变分布图（左：应力分布云图，右：应变分布云图）]
+  caption: [手车导轨应力分布图（左：最大主应力，右：最大剪切应力）]
 )
+
+== 最大变形与安全系数
+
+#figure(
+  grid(columns: 2, gutter: 12pt,
+    image("../field_plots/SeismicAnalysis/CopperSeismicMaxDeformation.png", width: 100%, height: 6.5cm, fit: "stretch"),
+    image("../field_plots/SeismicAnalysis/HandcartSeismicMaxDeformation.png", width: 100%, height: 6.5cm, fit: "stretch"),
+  ),
+  caption: [最大变形结果图（左：母线与触头盒；右：手车导轨）]
+)
+
+#figure(
+  grid(columns: 2, gutter: 12pt,
+    image("../field_plots/SeismicAnalysis/CopperSeismicSafetyFactor.png", width: 100%, height: 6.5cm, fit: "stretch"),
+    image("../field_plots/SeismicAnalysis/HandcartSeismicSafetyFactor.png", width: 100%, height: 6.5cm, fit: "stretch"),
+  ),
+  caption: [安全系数结果图（左：母线与触头盒；右：手车导轨）]
+)
+
+最大变形结果显示，手车导轨的变形主要集中在加载区域及其附近的结构过渡处，母线与触头盒的变形集中在转角与连接过渡区域，属于局部集中变形。安全系数结果显示，两类部件的最小安全系数均大于1，整体满足抗震强度与稳定性要求。
 
 == 应力结果汇总
 
@@ -279,40 +308,42 @@ C相母线（最右端）加触头盒重量：m=19.46Kg，重力G=mg=19.46×9.8=
     inset: 8pt,
     fill: (_, row) => if row == 0 { header-blue } else if calc.odd(row) { white } else { alt-gray },
     align: center + horizon,
-    [#th[评估部位]], [#th[最大应力 (MPa)]], [#th[许用应力 (MPa)]], [#th[安全系数]], [#th[判定]],
-    [母线（C相转角处）], [93.65], [395], [4.2], [合格],
-    [触头盒与螺栓固定处], [44.92], [180], [4.0], [合格],
-    [手车导轨], [148.69], [235], [1.58], [合格],
+    [#th[评估部位]], [#th[最大主/剪切应力 (MPa)]], [#th[许用应力 (MPa)]], [#th[安全系数]], [#th[判定]],
+    [母线（C相转角处）], [142.08], [395], [2.78], [合格],
+    [触头盒与螺栓固定处], [81.64], [180], [2.20], [合格],
+    [手车导轨], [175.73], [235], [1.34], [合格],
   ),
   caption: [应力分析结果汇总]
 )
 
 #block(fill: rgb("#e8f5e9"), inset: 10pt, radius: 4pt, width: 100%)[
-  *应力评价*：母线部分最大应力为93.65MPa，应力值为相对分支母线拐角处，安全系数为4.2；触头盒部分最大应力为44.92MPa，安全系数均大于3；手车导轨最大应力值为148.69MPa，满足核电项目开关柜的抗震强度要求。
+  *应力评价*：母线部分最大主应力为142.08MPa，应力集中于分支母线拐角处，安全系数为2.78；触头盒部分最大剪切应力为81.64MPa，安全系数为2.20；手车导轨最大主应力为175.73MPa，安全系数为1.34，满足核电项目开关柜的抗震强度要求。
 ]
 
 
 = 结论
 
-母线部分最大应力为93.65MPa（T2紫铜材料许用应力为395MPa），安全系数为4.2；触头盒部分最大应力为44.92MPa（玻纤增强环氧树脂材料许用应力为180MPa），安全系数为4.0；手车导轨最大应力值为148.69MPa（Q235B钢材许用应力为235MPa），安全系数为1.58。以上三处关键部位应力值均小于其材料许用应力，满足核电项目开关柜的抗震强度要求。
+母线部分最大主应力为142.08MPa（T2紫铜材料许用应力为395MPa），安全系数为2.78；触头盒部分最大剪切应力为81.64MPa（玻纤增强环氧树脂材料许用应力为180MPa），安全系数为2.20；手车导轨最大主应力值为175.73MPa（Q235B钢材许用应力为235MPa），安全系数为1.34。以上三处关键部位应力值均小于其材料许用应力，满足核电项目开关柜的抗震强度要求。最大变形主要集中在导轨加载区域与母线转角处，安全系数均大于1，满足抗震强度要求。
 
 通过针对移开式开关柜的母线、触头盒、手车导轨三处关键部位，按核电项目的要求开展地震工况仿真模拟，分析结果表明，以上所有部位均满足地震烈度8度（AG5）抗震水平的设计要求。
 
-#v(2em)
-#line(length: 100%, stroke: 0.5pt)
-#grid(
-  columns: (1fr, 1fr),
-  [
-    #text(size: 9pt, fill: gray)[
-      *仿真工具*：ANSYS Workbench 2022 R2 \
-      *分析类型*：抗震分析 \
-    ]
-  ],
-  [
-    #align(right)[
+#place(bottom)[
+  #line(length: 100%, stroke: 0.5pt)
+  #v(0.6em)
+  #grid(
+    columns: (1fr, 1fr),
+    [
       #text(size: 9pt, fill: gray)[
-        *报告日期*：#underline[#h(2em)]年#underline[#h(1em)]月#underline[#h(1em)]日 \
+        *仿真工具*：ANSYSWorkbench2024R2 \
+        *分析类型*：抗震分析 \
+      ]
+    ],
+    [
+      #align(right)[
+        #text(size: 9pt, fill: gray)[
+          *报告日期*：#underline[#h(2em)]年#underline[#h(1em)]月#underline[#h(1em)]日 \
+        ]
       ]
     ]
-  ]
-)
+  )
+]
